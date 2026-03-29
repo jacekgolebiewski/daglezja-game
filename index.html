@@ -920,15 +920,23 @@ function closeSettings() {
 // Fill in your Google OAuth client ID to enable Drive sync.
 // Setup: console.cloud.google.com → new project → enable Drive API →
 //        Credentials → OAuth web client → add your page URL as origin.
-const GOOGLE_CLIENT_ID  = ''; // e.g. '123456789-abc.apps.googleusercontent.com'
-const DRIVE_FOLDER_ID   = '1l89TwFZMXqTx0X2hkz9uyp4l0VRqZGTo'; // shared Drive folder
+// Firebase config — fill in from console.firebase.google.com
+// Project settings → Your apps → Web app → SDK setup
+const FIREBASE_CONFIG = {
+  apiKey:            '',
+  authDomain:        '',
+  projectId:         '',
+  storageBucket:     '',   // e.g. 'your-project.appspot.com'
+  messagingSenderId: '',
+  appId:             '',
+};
 
 const CHAR_STORAGE_KEY = 'blockrunner_chars_v1';
-let charEditIdx   = -1;
-let cropCallback  = null;
-let driveToken    = null;
-let driveSignedIn = false;
-let tokenClient   = null;
+let charEditIdx  = -1;
+let cropCallback = null;
+let fireUser     = null;   // Firebase Auth user (null = not signed in)
+let _fbStorage   = null;   // firebase.storage() handle
+let _fbAuth      = null;   // firebase.auth() handle
 
 // ── localStorage persistence ──────────────────────────────────────────────────
 function loadCharactersFromStorage() {
@@ -982,7 +990,7 @@ function showCharList() {
   document.getElementById('char-list-view').style.display = 'block';
   document.getElementById('char-edit-view').style.display = 'none';
   document.getElementById('char-title').textContent = 'Characters';
-  renderDriveSection();
+  renderSyncSection();
   renderCharList();
 }
 
@@ -1219,114 +1227,102 @@ document.getElementById('crop-ok-btn').addEventListener('click', () => {
   if (cropCallback) { cropCallback(dataUrl); cropCallback = null; }
 });
 
-// ── Google Drive sync ─────────────────────────────────────────────────────────
-function initGoogleDrive() {
-  if (!GOOGLE_CLIENT_ID) return;
+// ── Firebase sync ─────────────────────────────────────────────────────────────
+// Storage layout (all under characters/ in your Storage bucket):
+//   characters/char-{i}-{mood}.jpg   ← cropped 128×128 images
+//   characters/meta.json             ← names + storage paths
+//
+// Storage rules (paste into Firebase console → Storage → Rules):
+//   match /characters/{file} {
+//     allow read:  if true;
+//     allow write: if request.auth != null;
+//   }
+
+function loadScriptsSeq(urls, cb) {
+  if (!urls.length) { cb(); return; }
   const s = document.createElement('script');
-  s.src   = 'https://accounts.google.com/gsi/client';
-  s.onload = () => {
-    tokenClient = window.google.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID,
-      scope:     'https://www.googleapis.com/auth/drive.file',
-      callback:  resp => {
-        if (resp.error) return;
-        driveToken    = resp.access_token;
-        driveSignedIn = true;
-        renderDriveSection();
-      },
-    });
-  };
+  s.src    = urls[0];
+  s.onload = () => loadScriptsSeq(urls.slice(1), cb);
   document.head.appendChild(s);
 }
 
-function driveSignIn()  { tokenClient && tokenClient.requestAccessToken(); }
-function driveSignOut() {
-  if (!driveToken) return;
-  window.google.accounts.oauth2.revoke(driveToken, () => {
-    driveToken = null; driveSignedIn = false; renderDriveSection();
+function initFirebase() {
+  if (!FIREBASE_CONFIG.apiKey) return;
+  const VER = '10.12.0';
+  loadScriptsSeq([
+    `https://www.gstatic.com/firebasejs/${VER}/firebase-app-compat.js`,
+    `https://www.gstatic.com/firebasejs/${VER}/firebase-auth-compat.js`,
+    `https://www.gstatic.com/firebasejs/${VER}/firebase-storage-compat.js`,
+  ], () => {
+    const app  = window.firebase.initializeApp(FIREBASE_CONFIG);
+    _fbAuth    = window.firebase.auth(app);
+    _fbStorage = window.firebase.storage(app);
+    _fbAuth.onAuthStateChanged(user => {
+      fireUser = user;
+      renderSyncSection();
+      // Auto-load on sign-in
+      if (user) firebaseLoadAll();
+    });
   });
 }
 
-async function driveUpsertFile(parentId, name, body, mime) {
-  const search = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=name%3D'${encodeURIComponent(name)}'+and+'${parentId}'+in+parents+and+trashed%3Dfalse&fields=files(id)`,
-    { headers: { Authorization: `Bearer ${driveToken}` } }
-  ).then(r => r.json());
-
-  if (search.files && search.files.length) {
-    // Patch existing file content
-    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${search.files[0].id}?uploadType=media`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${driveToken}`, 'Content-Type': mime },
-      body,
-    });
-    return search.files[0].id;
-  }
-  // Create via multipart
-  const form = new FormData();
-  form.append('metadata', new Blob([JSON.stringify({ name, parents: [parentId] })], { type: 'application/json' }));
-  form.append('file', new Blob([body], { type: mime }));
-  const f = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${driveToken}` },
-    body: form,
-  }).then(r => r.json());
-  return f.id;
+function firebaseSignIn() {
+  const provider = new window.firebase.auth.GoogleAuthProvider();
+  _fbAuth.signInWithPopup(provider).catch(err => {
+    setSyncStatus('Sign-in failed: ' + err.message);
+  });
+}
+function firebaseSignOut() {
+  _fbAuth.signOut();
 }
 
-async function driveSaveAll() {
-  if (!driveToken) { driveSignIn(); return; }
-  driveSetStatus('Uploading…');
+function setSyncStatus(msg) {
+  const el = document.getElementById('sync-status-text');
+  if (el) el.textContent = msg;
+}
+
+async function firebaseSaveAll() {
+  if (!fireUser) { firebaseSignIn(); return; }
+  setSyncStatus('Uploading…');
   try {
-    const folderId = DRIVE_FOLDER_ID;
-    const meta     = {};
+    const root = _fbStorage.ref('characters');
+    const meta = {};
     for (let i = 0; i < CHARACTERS.length; i++) {
       const ch = CHARACTERS[i];
-      meta[i]  = { name: ch.name, color: ch.color, imageFileIds: {} };
+      meta[i]  = { name: ch.name, color: ch.color, paths: {} };
       for (const mood of ['default','happy','angry','sad']) {
         if (!ch._imgData[mood]) continue;
         const b64  = ch._imgData[mood].split(',')[1];
         const bin  = atob(b64);
         const arr  = new Uint8Array(bin.length);
         for (let j = 0; j < bin.length; j++) arr[j] = bin.charCodeAt(j);
-        const fileId = await driveUpsertFile(folderId, `char-${i}-${mood}.jpg`, arr.buffer, 'image/jpeg');
-        meta[i].imageFileIds[mood] = fileId;
+        const path = `char-${i}-${mood}.jpg`;
+        await root.child(path).put(arr.buffer, { contentType: 'image/jpeg' });
+        meta[i].paths[mood] = path;
       }
     }
-    await driveUpsertFile(folderId, 'characters-meta.json', JSON.stringify(meta), 'application/json');
-    driveSetStatus('✓ Saved to Google Drive');
+    const metaBlob = new Blob([JSON.stringify(meta)], { type: 'application/json' });
+    await root.child('meta.json').put(metaBlob, { contentType: 'application/json' });
+    setSyncStatus('✓ Saved to Firebase');
   } catch(err) {
-    driveSetStatus('Upload failed — check console');
+    setSyncStatus('Upload failed — check console');
     console.error(err);
   }
 }
 
-async function driveLoadAll() {
-  if (!driveToken) { driveSignIn(); return; }
-  driveSetStatus('Loading from Drive…');
+async function firebaseLoadAll() {
+  setSyncStatus('Loading…');
   try {
-    const folderId = DRIVE_FOLDER_ID;
-    const search   = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=name%3D'characters-meta.json'+and+'${folderId}'+in+parents+and+trashed%3Dfalse&fields=files(id)`,
-      { headers: { Authorization: `Bearer ${driveToken}` } }
-    ).then(r => r.json());
-
-    if (!search.files || !search.files.length) { driveSetStatus('No data on Drive yet'); return; }
-    const meta = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${search.files[0].id}?alt=media`,
-      { headers: { Authorization: `Bearer ${driveToken}` } }
-    ).then(r => r.json());
-
+    const metaUrl = await _fbStorage.ref('characters/meta.json').getDownloadURL();
+    const meta    = await fetch(metaUrl).then(r => r.json());
     for (const [idx, charMeta] of Object.entries(meta)) {
       const i = parseInt(idx);
       if (!CHARACTERS[i]) continue;
       if (charMeta.name)  CHARACTERS[i].name  = charMeta.name;
       if (charMeta.color) CHARACTERS[i].color = charMeta.color;
-      for (const [mood, fileId] of Object.entries(charMeta.imageFileIds || {})) {
-        const blob   = await fetch(
-          `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-          { headers: { Authorization: `Bearer ${driveToken}` } }
-        ).then(r => r.blob());
+      for (const [mood, path] of Object.entries(charMeta.paths || {})) {
+        const url = await _fbStorage.ref(`characters/${path}`).getDownloadURL();
+        const blob = await fetch(url).then(r => r.blob());
         await new Promise(res => {
           const fr = new FileReader();
           fr.onload = ev => {
@@ -1341,46 +1337,54 @@ async function driveLoadAll() {
       }
     }
     saveCharactersToStorage();
-    driveSetStatus('✓ Loaded from Google Drive');
+    setSyncStatus('✓ Synced');
     renderCharList();
   } catch(err) {
-    driveSetStatus('Load failed — check console');
-    console.error(err);
+    // meta.json doesn't exist yet — that's fine on first use
+    setSyncStatus(err.code === 'storage/object-not-found' ? 'No data yet — save first' : 'Load failed');
   }
 }
 
-function driveSetStatus(msg) {
-  const el = document.getElementById('drive-status-text');
-  if (el) el.textContent = msg;
-}
-
-function renderDriveSection() {
+function renderSyncSection() {
   const wrap = document.getElementById('char-drive-section');
-  if (!GOOGLE_CLIENT_ID) { wrap.innerHTML = ''; return; }
+  if (!FIREBASE_CONFIG.apiKey) { wrap.innerHTML = ''; return; }
 
-  const btnLabel = driveSignedIn ? 'Sign Out' : 'Sign In with Google';
+  // Firebase SDK not loaded yet
+  if (!_fbAuth) {
+    wrap.innerHTML = `<div style="padding:16px 16px 4px">
+      <p class="s-section-label">Cloud Sync</p>
+      <div class="drive-card"><div class="drive-row">
+        <span class="drive-status" id="sync-status-text">Connecting…</span>
+      </div></div></div>`;
+    return;
+  }
+
+  const signedIn = !!fireUser;
+  const email    = fireUser ? fireUser.email : '';
   wrap.innerHTML = `
     <div style="padding:16px 16px 4px">
-      <p class="s-section-label">Cloud Sync</p>
+      <p class="s-section-label">Firebase Sync</p>
       <div class="drive-card">
         <div class="drive-row">
-          <span class="drive-status" id="drive-status-text">
-            ${driveSignedIn ? '✓ Connected to Google Drive' : 'Not connected'}
+          <span class="drive-status" id="sync-status-text">
+            ${signedIn ? `✓ ${email}` : 'Not signed in'}
           </span>
-          <button class="btn-drive" id="drive-auth-btn">${btnLabel}</button>
+          <button class="btn-drive" id="sync-auth-btn">
+            ${signedIn ? 'Sign Out' : 'Sign In'}
+          </button>
         </div>
-        ${driveSignedIn ? `
+        ${signedIn ? `
         <div class="drive-row">
-          <button class="btn-drive" style="flex:1" id="drive-save-btn">↑ Save to Drive</button>
-          <button class="btn-drive" style="flex:1" id="drive-load-btn">↓ Load from Drive</button>
+          <button class="btn-drive" style="flex:1" id="sync-save-btn">↑ Save</button>
+          <button class="btn-drive" style="flex:1" id="sync-load-btn">↓ Load</button>
         </div>` : ''}
       </div>
     </div>`;
 
-  document.getElementById('drive-auth-btn').addEventListener('click',
-    () => driveSignedIn ? driveSignOut() : driveSignIn());
-  document.getElementById('drive-save-btn')?.addEventListener('click', driveSaveAll);
-  document.getElementById('drive-load-btn')?.addEventListener('click', driveLoadAll);
+  document.getElementById('sync-auth-btn').addEventListener('click',
+    () => signedIn ? firebaseSignOut() : firebaseSignIn());
+  document.getElementById('sync-save-btn')?.addEventListener('click', firebaseSaveAll);
+  document.getElementById('sync-load-btn')?.addEventListener('click', firebaseLoadAll);
 }
 
 function drawDead() {
@@ -1511,7 +1515,7 @@ function loop(ts) {
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
 loadCharactersFromStorage();
-initGoogleDrive();
+initFirebase();
 state    = 'cover';
 lastTime = 0;
 requestAnimationFrame(loop);
