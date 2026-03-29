@@ -60,12 +60,14 @@ let avatarHoverIdx;       // card the pointer is hovering over
 let dlg;                  // active dialogue state object (null when idle)
 let dlgBtns;              // [{x,y,w,h,idx}] hit areas, rebuilt each draw frame
 let nextDialogueTrigger;  // score at which next dialogue fires
+let screenShake;          // pixels of camera shake; decays each frame
 
 best                = 0;
 playerCharIdx       = -1;
 avatarHoverIdx      = -1;
 dlg                 = null;
 dlgBtns             = [];
+screenShake         = 0;
 
 // ── Resize ───────────────────────────────────────────────────────────────────
 function resize() {
@@ -85,6 +87,7 @@ function init() {
   platforms            = [];
   dlg                  = null;
   dlgBtns              = [];
+  screenShake          = 0;
   nextDialogueTrigger  = DIALOGUE_FIRST;
 
   const groundY     = H - B * 3;
@@ -137,11 +140,17 @@ function triggerDialogue() {
     charIdx,
     question,
     panelH,
-    panelY:         H,            // starts off-screen below; slides up
+    panelY:         H,     // starts off-screen below; slides up
     typeIdx:        0,
     typeTimer:      0,
     selectedAnswer: -1,
     reactTimer:     0,
+    // animation
+    charBounce:     0,     // vertical offset for happy bounce
+    charBounceV:    0,     // bounce velocity
+    shakeX:         0,     // horizontal offset for angry shake
+    shakeTimer:     0,     // drives sin oscillation
+    stars:          [],    // confetti particles on correct answer
   };
   dlgBtns = [];
   state   = 'dialogue';
@@ -165,6 +174,34 @@ function updateDialogue(dt) {
 
   } else if (dlg.phase === 'reacting') {
     dlg.reactTimer += dt;
+
+    // Happy bounce physics
+    if (dlg.charBounce < 0 || dlg.charBounceV < 0) {
+      dlg.charBounceV += 1500 * dt;
+      dlg.charBounce  += dlg.charBounceV * dt;
+      if (dlg.charBounce >= 0) {
+        dlg.charBounce  = 0;
+        dlg.charBounceV = dlg.charBounceV < -40 ? dlg.charBounceV * -0.42 : 0;
+      }
+    }
+
+    // Angry rage-wobble
+    const isWrong = dlg.selectedAnswer !== dlg.question.correct;
+    if (isWrong) {
+      dlg.shakeTimer += dt;
+      const decay = Math.max(0, 1 - dlg.reactTimer / 1.6);
+      dlg.shakeX = Math.sin(dlg.shakeTimer * 46) * decay * 15;
+    }
+
+    // Star particles
+    for (const s of dlg.stars) {
+      s.x    += s.vx * dt;
+      s.y    += s.vy * dt;
+      s.vy   += 400 * dt;
+      s.life -= dt;
+    }
+    dlg.stars = dlg.stars.filter(s => s.life > 0);
+
     if (dlg.reactTimer >= 2.2) dlg.phase = 'leaving';
 
   } else if (dlg.phase === 'leaving') {
@@ -181,6 +218,28 @@ function answerDialogue(idx) {
   dlg.selectedAnswer = idx;
   dlg.phase          = 'reacting';
   dlg.reactTimer     = 0;
+
+  if (idx === dlg.question.correct) {
+    // Happy: launch character upward
+    dlg.charBounceV = -420;
+    // Burst of confetti from the character area
+    const cx = W / 2, cy = dlg.panelY + 46;
+    const colours = ['#fbbf24', '#a3e635', '#22d3ee', '#f472b6', '#c084fc', '#fb923c'];
+    for (let i = 0; i < 26; i++) {
+      dlg.stars.push({
+        x:    cx + (Math.random() - 0.5) * 70,
+        y:    cy + (Math.random() - 0.5) * 24,
+        vx:   (Math.random() - 0.5) * 240,
+        vy:   -160 - Math.random() * 180,
+        life: 0.9 + Math.random() * 0.5,
+        color: colours[Math.floor(Math.random() * colours.length)],
+        size:  3 + Math.random() * 4,
+      });
+    }
+  } else {
+    // Angry: screen shake + character rage-wobble
+    screenShake = 18;
+  }
 }
 
 // ── Update ───────────────────────────────────────────────────────────────────
@@ -247,9 +306,17 @@ function draw() {
   ctx.fillRect(0, 0, W, H);
 
   if (state !== 'cover' && state !== 'avatar_select') {
+    if (screenShake > 0) {
+      ctx.save();
+      ctx.translate(
+        (Math.random() * 2 - 1) * screenShake,
+        (Math.random() * 2 - 1) * screenShake * 0.5
+      );
+    }
     drawPlatforms();
     drawPlayer();
     drawHUD();
+    if (screenShake > 0) ctx.restore();
   }
 
   if (state === 'cover')         drawCover();
@@ -455,17 +522,32 @@ function drawDialogue() {
   ctx.fillStyle = ch.color;
   ctx.fillRect(0, py, W, 4);
 
+  // ── Star particles (drawn before panel so they appear over the game) ──
+  for (const s of dlg.stars) {
+    ctx.globalAlpha = Math.max(0, Math.min(1, s.life * 1.4));
+    ctx.fillStyle   = s.color;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
   // ── Character ──
+  const moodKey  = dlg.phase === 'reacting'
+    ? (dlg.selectedAnswer === q.correct ? 'happy' : 'angry')
+    : 'default';
   const emojiSz  = Math.min(52, W * 0.12);
   const emojiCY  = py + 46;
   const nameY    = py + 70;
+  const ex       = W / 2 + dlg.shakeX;
+  const ey       = emojiCY + dlg.charBounce;
   ctx.font       = `${emojiSz}px serif`;
   ctx.textAlign  = 'center';
-  ctx.fillText(ch.moods.default, W / 2, emojiCY);
+  ctx.fillText(ch.moods[moodKey] || ch.moods.default, ex, ey);
 
   ctx.fillStyle  = ch.color;
   ctx.font       = `bold ${Math.min(13, W * 0.034)}px monospace`;
-  ctx.fillText(ch.name.toUpperCase(), W / 2, nameY);
+  ctx.fillText(ch.name.toUpperCase(), ex, nameY);
 
   // ── Speech bubble ──
   const btnH      = 48;
@@ -653,6 +735,8 @@ function loop(ts) {
   lastTime = ts;
   if (state === 'playing')  update(dt);
   if (state === 'dialogue') updateDialogue(dt);
+  if (screenShake > 0.4) screenShake *= 1 - Math.min(1, dt * 8);
+  else                    screenShake = 0;
   draw();
 }
 
