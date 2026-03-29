@@ -17,7 +17,7 @@ const C = document.getElementById('c');
 const ctx = C.getContext('2d');
 
 // ── Characters (swap these out to customise — images/avatars to be added externally) ──
-const VERSION = 'v0.0.6';
+const VERSION = 'v0.0.7';
 
 const CHARACTERS = [
   { name: 'Rex',    color: '#22c55e', moods: { default: '🦕', happy: '🥳', angry: '🦖' } },
@@ -38,7 +38,7 @@ const QUESTIONS = [
 ];
 
 // ── Constants ───────────────────────────────────────────────────────────────
-const B             = 40;    // block size px
+const B             = 36;    // block size px
 const GRAVITY       = 2400;  // px/s²
 const JUMP_VY       = -680;  // px/s  (negative = upward)
 const FLOAT_GRAV    = 0.38;  // gravity multiplier while holding & ascending
@@ -111,7 +111,7 @@ function init() {
   screenShake          = 0;
   nextDialogueTrigger  = DIALOGUE_FIRST;
 
-  const groundY     = H - B * 3;
+  const groundY     = H - B * 2;
   const groundWidth = Math.ceil(W / B) + 4;  // 1 screen of safe ground
 
   platforms.push({ wx: 0, y: groundY, wb: groundWidth });
@@ -137,8 +137,8 @@ function genNext() {
   const gapB = 2 + Math.floor(Math.random() * 3);           // gap: 2–4 blocks
   const widB = 3 + Math.floor(Math.random() * 5);           // width: 3–7 blocks
   const dyB  = Math.floor(Math.random() * 5) - 2;           // Δheight: –2..+2 blocks
-  const minY = H - B * 9;
-  const maxY = H - B * 3;
+  const minY = H - B * 8;
+  const maxY = H - B * 2;
   const newY = Math.max(minY, Math.min(maxY, genLastY + dyB * B));
   const startX = genLastRight + gapB * B;
 
@@ -166,7 +166,7 @@ function generateChoicePaths() {
   const pw     = 4;
   const step   = (pw + 3) * B;
   const upperY = H - B * 7;
-  const lowerY = H - B * 3;
+  const lowerY = H - B * 2;
 
   for (let i = 0; i < count; i++) {
     const x = forkX + i * step;
@@ -181,28 +181,23 @@ function generateChoicePaths() {
 
 // ── Dialogue system ───────────────────────────────────────────────────────────
 function triggerDialogue() {
-  // Pick one of the two characters that isn't the player
-  const pool    = [0, 1, 2].filter(i => i !== playerCharIdx);
-  const charIdx = pool[Math.floor(Math.random() * pool.length)];
+  const pool     = [0, 1, 2].filter(i => i !== playerCharIdx);
+  const charIdx  = pool[Math.floor(Math.random() * pool.length)];
   const question = QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)];
-  const panelH  = Math.max(260, Math.min(Math.round(H * 0.43), 295));
 
   dlg = {
-    phase:          'entering',
+    phase:          'typing',
     charIdx,
     question,
-    panelH,
-    panelY:         H,     // starts off-screen below; slides up
     typeIdx:        0,
     typeTimer:      0,
     selectedAnswer: -1,
     reactTimer:     0,
-    // animation
-    charBounce:     0,     // vertical offset for happy bounce
-    charBounceV:    0,     // bounce velocity
-    shakeX:         0,     // horizontal offset for angry shake
-    shakeTimer:     0,     // drives sin oscillation
-    stars:          [],    // confetti particles on correct answer
+    charBounce:     0,
+    charBounceV:    0,
+    shakeX:         0,
+    shakeTimer:     0,
+    stars:          [],
   };
   generateChoicePaths();
   dlgBtns = [];
@@ -210,16 +205,7 @@ function triggerDialogue() {
 }
 
 function updateDialogue(dt) {
-  const targetY = H - dlg.panelH;
-
-  if (dlg.phase === 'entering') {
-    dlg.panelY += (targetY - dlg.panelY) * Math.min(1, dt * 14);
-    if (Math.abs(dlg.panelY - targetY) < 1) {
-      dlg.panelY = targetY;
-      dlg.phase  = 'typing';
-    }
-
-  } else if (dlg.phase === 'typing') {
+  if (dlg.phase === 'typing') {
     dlg.typeTimer += dt;
     const full = dlg.question.text.length;
     dlg.typeIdx = Math.min(full, Math.floor(dlg.typeTimer * 32));
@@ -228,7 +214,6 @@ function updateDialogue(dt) {
   } else if (dlg.phase === 'reacting') {
     dlg.reactTimer += dt;
 
-    // Happy bounce physics
     if (dlg.charBounce < 0 || dlg.charBounceV < 0) {
       dlg.charBounceV += 1500 * dt;
       dlg.charBounce  += dlg.charBounceV * dt;
@@ -238,28 +223,17 @@ function updateDialogue(dt) {
       }
     }
 
-    // Angry rage-wobble
-    const isWrong = dlg.selectedAnswer !== dlg.question.correct;
-    if (isWrong) {
+    if (dlg.selectedAnswer !== dlg.question.correct) {
       dlg.shakeTimer += dt;
-      const decay = Math.max(0, 1 - dlg.reactTimer / 1.6);
-      dlg.shakeX = Math.sin(dlg.shakeTimer * 46) * decay * 15;
+      dlg.shakeX = Math.sin(dlg.shakeTimer * 46) * Math.max(0, 1 - dlg.reactTimer / 1.6) * 12;
     }
 
-    // Star particles
     for (const s of dlg.stars) {
-      s.x    += s.vx * dt;
-      s.y    += s.vy * dt;
-      s.vy   += 400 * dt;
-      s.life -= dt;
+      s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 400 * dt; s.life -= dt;
     }
     dlg.stars = dlg.stars.filter(s => s.life > 0);
 
-    if (dlg.reactTimer >= 2.2) dlg.phase = 'leaving';
-
-  } else if (dlg.phase === 'leaving') {
-    dlg.panelY += (H + 20 - dlg.panelY) * Math.min(1, dt * 12);
-    if (dlg.panelY >= H + 10) {
+    if (dlg.reactTimer >= 2.2) {
       platforms = platforms.filter(p => p.choiceIdx === undefined);
       state = 'playing';
       dlg   = null;
@@ -277,7 +251,7 @@ function answerDialogue(idx) {
     // Happy: launch character upward
     dlg.charBounceV = -420;
     // Burst of confetti from the character area
-    const cx = W / 2, cy = dlg.panelY + 46;
+    const cx = 36, cy = 28;   // near top-bar emoji
     const colours = ['#fbbf24', '#a3e635', '#22d3ee', '#f472b6', '#c084fc', '#fb923c'];
     for (let i = 0; i < 26; i++) {
       dlg.stars.push({
@@ -331,7 +305,7 @@ function update(dt) {
   }
 
   // Choice-platform landing → auto-answer
-  if (dlg && player.onGround && (dlg.phase === 'entering' || dlg.phase === 'typing' || dlg.phase === 'choices')) {
+  if (dlg && player.onGround && (dlg.phase === 'typing' || dlg.phase === 'choices')) {
     for (const p of platforms) {
       if (p.choiceIdx === undefined) continue;
       if (player.wx + player.w <= p.wx || player.wx >= p.wx + p.wb * B) continue;
@@ -596,19 +570,48 @@ function wrapText(text, cx, y, maxW, lineH) {
 function drawDialogue() {
   if (!dlg) return;
   const ch  = CHARACTERS[dlg.charIdx];
-  const py  = Math.round(dlg.panelY);
-  const ph  = dlg.panelH;
   const q   = dlg.question;
+  const barH = Math.min(52, H * 0.14);
 
-  // Panel background
-  ctx.fillStyle = 'rgba(18,18,31,0.92)';
-  ctx.fillRect(0, py, W, ph + 4);
-
-  // Coloured top border strip
+  // Top bar background + colour accent
+  ctx.fillStyle = 'rgba(10,10,20,0.86)';
+  ctx.fillRect(0, 0, W, barH);
   ctx.fillStyle = ch.color;
-  ctx.fillRect(0, py, W, 4);
+  ctx.fillRect(0, barH - 2, W, 2);
 
-  // ── Star particles (drawn before panel so they appear over the game) ──
+  // Character emoji (left side)
+  const moodKey = dlg.phase === 'reacting'
+    ? (dlg.selectedAnswer === q.correct ? 'happy' : 'angry') : 'default';
+  const emojiSz = Math.min(34, barH * 0.76);
+  ctx.font      = `${emojiSz}px serif`;
+  ctx.textAlign = 'left';
+  ctx.fillText(ch.moods[moodKey] || ch.moods.default,
+    10 + dlg.shakeX, barH * 0.74 + dlg.charBounce);
+
+  // Name tag
+  ctx.fillStyle = ch.color;
+  ctx.font      = `bold ${Math.min(11, W * 0.028)}px monospace`;
+  ctx.fillText(ch.name.toUpperCase(), emojiSz + 18, barH * 0.38);
+
+  // Question / reaction text
+  let txt, col;
+  if (dlg.phase === 'reacting') {
+    const ok = dlg.selectedAnswer === q.correct;
+    txt = ok ? q.happyLine : q.wrongLine;
+    col = ok ? '#4ade80' : '#f87171';
+  } else {
+    txt = q.text.slice(0, dlg.typeIdx) + (dlg.typeIdx < q.text.length ? '▌' : '');
+    col = '#ffffff';
+  }
+  ctx.fillStyle = col;
+  ctx.font      = `bold ${Math.min(13, W * 0.033)}px monospace`;
+  const maxTW   = W - emojiSz - 28;
+  let label     = txt;
+  while (ctx.measureText(label).width > maxTW && label.length > 4) label = label.slice(0, -1);
+  if (label !== txt) label += '…';
+  ctx.fillText(label, emojiSz + 18, barH * 0.76);
+
+  // Star particles (confetti)
   for (const s of dlg.stars) {
     ctx.globalAlpha = Math.max(0, Math.min(1, s.life * 1.4));
     ctx.fillStyle   = s.color;
@@ -617,92 +620,7 @@ function drawDialogue() {
     ctx.fill();
   }
   ctx.globalAlpha = 1;
-
-  // ── Character ──
-  const moodKey  = dlg.phase === 'reacting'
-    ? (dlg.selectedAnswer === q.correct ? 'happy' : 'angry')
-    : 'default';
-  const emojiSz  = Math.min(52, W * 0.12);
-  const emojiCY  = py + 46;
-  const nameY    = py + 70;
-  const ex       = W / 2 + dlg.shakeX;
-  const ey       = emojiCY + dlg.charBounce;
-  ctx.font       = `${emojiSz}px serif`;
-  ctx.textAlign  = 'center';
-  ctx.fillText(ch.moods[moodKey] || ch.moods.default, ex, ey);
-
-  ctx.fillStyle  = ch.color;
-  ctx.font       = `bold ${Math.min(13, W * 0.034)}px monospace`;
-  ctx.fillText(ch.name.toUpperCase(), ex, nameY);
-
-  // ── Speech bubble ──
-  const btnH      = 48;
-  const btnTop    = py + ph - 74;
-  const bubbleTop = py + 84;
-  const bubbleH   = btnTop - bubbleTop - 12;
-  const bubbleW   = Math.min(W - 48, 480);
-  const bubbleX   = (W - bubbleW) / 2;
-
-  // Determine displayed text
-  let speechText, speechColor;
-  if (dlg.phase === 'reacting') {
-    const correct = dlg.selectedAnswer === q.correct;
-    speechText  = correct ? q.happyLine : q.wrongLine;
-    speechColor = correct ? '#4ade80' : '#f87171';
-  } else {
-    speechText  = q.text.slice(0, dlg.typeIdx) + (dlg.typeIdx < q.text.length ? '▌' : '');
-    speechColor = '#ffffff';
-  }
-
-  ctx.fillStyle = 'rgba(255,255,255,0.05)';
-  roundRect(bubbleX, bubbleTop, bubbleW, bubbleH, 10);
-  ctx.fill();
-
-  ctx.fillStyle  = speechColor;
-  ctx.font       = `bold ${Math.min(15, W * 0.038)}px monospace`;
-  ctx.textAlign  = 'center';
-  wrapText(speechText, W / 2, bubbleTop + 24, bubbleW - 28, Math.min(20, W * 0.05));
-
-  // ── Answer indicator (reacting phase only) ──
   dlgBtns = [];
-  if (dlg.phase === 'choices') {
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    ctx.font      = `${Math.min(12, W * 0.03)}px monospace`;
-    ctx.textAlign = 'center';
-    ctx.fillText('▲ jump  →  choose a path', W / 2, btnTop + btnH / 2 + 5);
-  } else if (dlg.phase === 'reacting') {
-    const totalBW = Math.min(W - 48, 480);
-    const btnW    = (totalBW - 12) / 2;
-    const b0x     = (W - totalBW) / 2;
-    const b1x     = b0x + btnW + 12;
-
-    for (let i = 0; i < 2; i++) {
-      const bx        = i === 0 ? b0x : b1x;
-      const isCorrect = i === q.correct;
-      const isPicked  = i === dlg.selectedAnswer;
-      const bg     = isPicked ? (isCorrect ? '#0a3d1e' : '#3d0a0a') : 'rgba(255,255,255,0.04)';
-      const border = isCorrect ? '#4ade80' : '#f87171';
-      const text   = isCorrect ? '#4ade80' : '#f87171';
-
-      ctx.fillStyle   = bg;
-      roundRect(bx, btnTop, btnW, btnH, 9);
-      ctx.fill();
-      ctx.strokeStyle = border;
-      ctx.lineWidth   = 1.5;
-      roundRect(bx, btnTop, btnW, btnH, 9);
-      ctx.stroke();
-
-      ctx.font = `bold ${Math.min(13, W * 0.034)}px monospace`;
-      let label = q.answers[i];
-      while (ctx.measureText(label).width > btnW - 20 && label.length > 3)
-        label = label.slice(0, -1);
-      if (label !== q.answers[i]) label += '…';
-
-      ctx.fillStyle = text;
-      ctx.textAlign = 'center';
-      ctx.fillText(label, bx + btnW / 2, btnTop + btnH / 2 + 5);
-    }
-  }
 }
 
 function drawDead() {
