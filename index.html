@@ -8,11 +8,48 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #0a0a0f; overflow: hidden; touch-action: none; user-select: none; }
     canvas { display: block; }
+    #rotate {
+      display: none;
+      position: fixed; inset: 0;
+      background: #0a0a0f;
+      color: #fff;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: monospace;
+      z-index: 9999;
+      gap: 20px;
+    }
+    #rotate.show { display: flex; }
+    #rotate .icon { font-size: 64px; animation: spin 1.4s ease-in-out infinite alternate; }
+    #rotate p { font-size: 18px; opacity: 0.7; letter-spacing: 0.05em; }
+    @keyframes spin { from { transform: rotate(-20deg); } to { transform: rotate(20deg); } }
   </style>
 </head>
 <body>
+<div id="rotate">
+  <div class="icon">📱</div>
+  <p>ROTATE TO PLAY</p>
+</div>
 <canvas id="c"></canvas>
 <script>
+// ── Orientation lock & portrait guard ────────────────────────────────────────
+const rotateEl = document.getElementById('rotate');
+
+function checkOrientation() {
+  const portrait = window.innerHeight > window.innerWidth;
+  rotateEl.classList.toggle('show', portrait);
+}
+
+// Try locking to landscape whenever the user first interacts
+function tryLockLandscape() {
+  screen.orientation?.lock?.('landscape').catch(() => {/* silently ignore – not all browsers allow this */});
+}
+
+window.addEventListener('resize', checkOrientation);
+window.addEventListener('orientationchange', checkOrientation);
+document.addEventListener('pointerdown', tryLockLandscape, { once: true });
+checkOrientation();
 const C = document.getElementById('c');
 const ctx = C.getContext('2d');
 
