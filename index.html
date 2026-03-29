@@ -17,6 +17,8 @@ const C = document.getElementById('c');
 const ctx = C.getContext('2d');
 
 // ── Characters (swap these out to customise — images/avatars to be added externally) ──
+const VERSION = 'v0.0.6';
+
 const CHARACTERS = [
   { name: 'Rex',    color: '#22c55e', moods: { default: '🦕', happy: '🥳', angry: '🦖' } },
   { name: 'R0B0',   color: '#60a5fa', moods: { default: '🤖', happy: '🤩', angry: '💢' } },
@@ -491,6 +493,12 @@ function drawCover() {
     ctx.font      = `${Math.min(18, W * 0.045)}px monospace`;
     ctx.fillText('best  ' + best + 'm', W / 2, H * 0.69);
   }
+
+  // Version
+  ctx.fillStyle = '#33334a';
+  ctx.font      = `${Math.min(11, W * 0.028)}px monospace`;
+  ctx.textAlign = 'right';
+  ctx.fillText(VERSION, W - 12, H - 10);
 }
 
 // Returns card layout constants (shared between draw & hit-test)
