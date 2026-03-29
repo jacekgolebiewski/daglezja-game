@@ -286,9 +286,13 @@ let screenShake;          // pixels of camera shake; decays each frame
 let cogBtn;               // settings/cog button hit area {x,y,w,h}
 let resumeBtn;            // resume button hit area in pause screen
 let pausedFromState;      // state to restore on resume
+let playerMoodKey;        // 'default' | 'happy' | 'angry' — current player mood
+let playerMoodTimer;      // seconds remaining for current mood flash
 
 best                = 0;
 playerCharIdx       = -1;
+playerMoodKey       = 'default';
+playerMoodTimer     = 0;
 avatarHoverIdx      = -1;
 dlg                 = null;
 dlgBtns             = [];
@@ -498,6 +502,15 @@ function answerDialogue(idx) {
 
 // ── Update ───────────────────────────────────────────────────────────────────
 function update(dt) {
+  // Player mood flashes — random brief happy/angry moments
+  if (playerMoodTimer > 0) {
+    playerMoodTimer -= dt;
+    if (playerMoodTimer <= 0) playerMoodKey = 'default';
+  } else if (Math.random() < 0.004) {   // ~once every 4 s at 60 fps
+    playerMoodKey   = Math.random() < 0.5 ? 'happy' : 'angry';
+    playerMoodTimer = 0.5;
+  }
+
   // Speed ramp
   speedTimer += dt;
   if (speedTimer >= SPEED_INT) {
@@ -626,13 +639,35 @@ function drawPlatforms() {
 function drawPlayer() {
   const sx   = player.wx - cameraX;
   const char = playerCharIdx >= 0 ? CHARACTERS[playerCharIdx] : null;
-  // Body — use chosen character colour, fallback green
+  const mood = playerMoodKey || 'default';
+
+  // Coloured block body (always drawn as base)
   ctx.fillStyle = char ? char.color : '#4ade80';
   ctx.fillRect(sx, player.y, player.w, player.h);
-  // Eyes (right-facing)
-  ctx.fillStyle = '#0f0f1a';
-  ctx.fillRect(sx + player.w - 11, player.y + 6,  5, 4);
-  ctx.fillRect(sx + player.w - 11, player.y + 15, 5, 4);
+
+  const imgObj = char && (char.imgs[mood] || char.imgs.default);
+  if (imgObj && imgObj.complete && imgObj.naturalWidth) {
+    // Clip image to player rect
+    ctx.save();
+    roundRect(sx, player.y, player.w, player.h, 3);
+    ctx.clip();
+    ctx.drawImage(imgObj, sx, player.y, player.w, player.h);
+    ctx.restore();
+  } else if (char) {
+    // Emoji fallback — draw centred on the block
+    const emojiSz = Math.floor(player.w * 0.82);
+    ctx.font          = `${emojiSz}px serif`;
+    ctx.textAlign     = 'center';
+    ctx.textBaseline  = 'middle';
+    ctx.fillText(char.moods[mood] || char.moods.default,
+      sx + player.w / 2, player.y + player.h / 2);
+    ctx.textBaseline  = 'alphabetic';
+  } else {
+    // Default eyes when no character selected
+    ctx.fillStyle = '#0f0f1a';
+    ctx.fillRect(sx + player.w - 11, player.y + 6,  5, 4);
+    ctx.fillRect(sx + player.w - 11, player.y + 15, 5, 4);
+  }
 }
 
 function drawHUD() {
