@@ -529,12 +529,8 @@ function drawDialogue() {
   const ph  = dlg.panelH;
   const q   = dlg.question;
 
-  // Dim the game world above
-  ctx.fillStyle = 'rgba(0,0,10,0.55)';
-  ctx.fillRect(0, 0, W, py);
-
   // Panel background
-  ctx.fillStyle = '#12121f';
+  ctx.fillStyle = 'rgba(18,18,31,0.92)';
   ctx.fillRect(0, py, W, ph + 4);
 
   // Coloured top border strip
@@ -752,7 +748,7 @@ function loop(ts) {
   requestAnimationFrame(loop);
   const dt = lastTime === 0 ? 0 : Math.min((ts - lastTime) / 1000, 0.05);
   lastTime = ts;
-  if (state === 'playing')  update(dt);
+  if (state === 'playing' || state === 'dialogue') update(dt);
   if (state === 'dialogue') updateDialogue(dt);
   if (screenShake > 0.4) screenShake *= 1 - Math.min(1, dt * 8);
   else                    screenShake = 0;
