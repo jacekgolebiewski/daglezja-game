@@ -5,12 +5,12 @@ Playable at: https://jacekgolebiewski.github.io/daglezja-game/
 
 ## Version
 
-Current version: **v0.1.0**
+Current version: **v0.1.1**
 
 The version is defined at the top of `index.html`:
 
 ```js
-const VERSION = 'v0.1.0';
+const VERSION = 'v0.1.1';
 ```
 
 **Update `VERSION` with every change before committing.**
