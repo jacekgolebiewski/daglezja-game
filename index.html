@@ -17,7 +17,7 @@ const C = document.getElementById('c');
 const ctx = C.getContext('2d');
 
 // ── Characters (swap these out to customise — images/avatars to be added externally) ──
-const VERSION = 'v0.0.8';
+const VERSION = 'v0.0.9';
 
 const CHARACTERS = [
   { name: 'Rex',    color: '#22c55e', moods: { default: '🦕', happy: '🥳', angry: '🦖' } },
@@ -63,6 +63,9 @@ let dlg;                  // active dialogue state object (null when idle)
 let dlgBtns;              // [{x,y,w,h,idx}] hit areas, rebuilt each draw frame
 let nextDialogueTrigger;  // score at which next dialogue fires
 let screenShake;          // pixels of camera shake; decays each frame
+let cogBtn;               // settings/cog button hit area {x,y,w,h}
+let resumeBtn;            // resume button hit area in pause screen
+let pausedFromState;      // state to restore on resume
 
 best                = 0;
 playerCharIdx       = -1;
@@ -70,6 +73,9 @@ avatarHoverIdx      = -1;
 dlg                 = null;
 dlgBtns             = [];
 screenShake         = 0;
+cogBtn              = null;
+resumeBtn           = null;
+pausedFromState     = 'playing';
 
 // ── Resize / orientation ─────────────────────────────────────────────────────
 function resize() {
@@ -364,6 +370,7 @@ function draw() {
   if (state === 'avatar_select') drawAvatarSelect();
   if (state === 'dead')          drawDead();
   if (state === 'dialogue')      drawDialogue();
+  if (state === 'paused')        drawPaused();
 }
 
 function drawPlatforms() {
@@ -433,6 +440,17 @@ function drawHUD() {
   ctx.font       = '11px monospace';
   ctx.textAlign  = 'left';
   ctx.fillText('SPEED', bx, by - 6);
+
+  // Cog / settings button (bottom-right)
+  const cbSz = 36, cbX = W - cbSz - 12, cbY = H - cbSz - 12;
+  cogBtn = { x: cbX, y: cbY, w: cbSz, h: cbSz };
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  roundRect(cbX, cbY, cbSz, cbSz, 8);
+  ctx.fill();
+  ctx.font      = `${Math.round(cbSz * 0.56)}px serif`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#666688';
+  ctx.fillText('⚙', cbX + cbSz / 2, cbY + cbSz * 0.74);
 }
 
 function drawCover() {
@@ -623,6 +641,63 @@ function drawDialogue() {
   dlgBtns = [];
 }
 
+function drawPaused() {
+  // Dim game world behind
+  ctx.fillStyle = 'rgba(0,0,0,0.72)';
+  ctx.fillRect(0, 0, W, H);
+
+  // Panel
+  const panW = Math.min(300, W - 48);
+  const panX = (W - panW) / 2;
+  const panH = 220;
+  const panY = (H - panH) / 2;
+
+  ctx.fillStyle = '#12121f';
+  roundRect(panX, panY, panW, panH, 14);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+  ctx.lineWidth   = 1.5;
+  roundRect(panX, panY, panW, panH, 14);
+  ctx.stroke();
+
+  // Gear + title
+  ctx.font      = `${Math.min(24, panW * 0.1)}px serif`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#aaaacc';
+  ctx.fillText('⚙', W / 2, panY + 38);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font      = `bold ${Math.min(16, W * 0.04)}px monospace`;
+  ctx.fillText('SETTINGS', W / 2, panY + 62);
+
+  // Divider
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth   = 1;
+  ctx.beginPath();
+  ctx.moveTo(panX + 20, panY + 76);
+  ctx.lineTo(panX + panW - 20, panY + 76);
+  ctx.stroke();
+
+  // Version
+  ctx.fillStyle = '#444466';
+  ctx.font      = `${Math.min(11, W * 0.028)}px monospace`;
+  ctx.fillText('version', W / 2, panY + 106);
+  ctx.fillStyle = '#8888aa';
+  ctx.font      = `bold ${Math.min(15, W * 0.038)}px monospace`;
+  ctx.fillText(VERSION, W / 2, panY + 126);
+
+  // Resume button
+  const btnW = panW - 48, btnH = 42;
+  const btnX = panX + 24, btnY = panY + panH - 58;
+  resumeBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
+  ctx.fillStyle = '#4ade80';
+  roundRect(btnX, btnY, btnW, btnH, 10);
+  ctx.fill();
+  ctx.fillStyle = '#0a1a0a';
+  ctx.font      = `bold ${Math.min(15, W * 0.038)}px monospace`;
+  ctx.fillText('RESUME', W / 2, btnY + btnH / 2 + 5);
+}
+
 function drawDead() {
   ctx.fillStyle = 'rgba(0,0,0,0.78)';
   ctx.fillRect(0, 0, W, H);
@@ -667,6 +742,24 @@ function roundRect(x, y, w, h, r) {
 // ── Input ────────────────────────────────────────────────────────────────────
 function press(px, py) {
   holding = true;
+
+  // Cog button → pause/settings (works during play and dialogue)
+  if ((state === 'playing' || state === 'dialogue') && cogBtn &&
+      px >= cogBtn.x && px <= cogBtn.x + cogBtn.w &&
+      py >= cogBtn.y && py <= cogBtn.y + cogBtn.h) {
+    pausedFromState = state;
+    state = 'paused';
+    return;
+  }
+
+  // Paused / settings screen
+  if (state === 'paused') {
+    if (resumeBtn && px >= resumeBtn.x && px <= resumeBtn.x + resumeBtn.w &&
+        py >= resumeBtn.y && py <= resumeBtn.y + resumeBtn.h) {
+      state = pausedFromState;
+    }
+    return;
+  }
 
   if (state === 'cover') {
     state = 'avatar_select';
@@ -716,6 +809,11 @@ C.addEventListener('pointerup',     release);
 C.addEventListener('pointercancel', release);
 
 document.addEventListener('keydown', e => {
+  if (e.code === 'Escape') {
+    if (state === 'playing' || state === 'dialogue') { pausedFromState = state; state = 'paused'; }
+    else if (state === 'paused') state = pausedFromState;
+    return;
+  }
   if (['Space', 'ArrowUp', 'KeyW'].includes(e.code)) { e.preventDefault(); press(-1, -1); }
 });
 document.addEventListener('keyup', e => {
@@ -729,8 +827,8 @@ function loop(ts) {
   lastTime = ts;
   if (state === 'playing' || state === 'dialogue') update(dt);
   if (state === 'dialogue') updateDialogue(dt);
-  if (screenShake > 0.4) screenShake *= 1 - Math.min(1, dt * 8);
-  else                    screenShake = 0;
+  if (state !== 'paused' && screenShake > 0.4) screenShake *= 1 - Math.min(1, dt * 8);
+  else if (state !== 'paused')                 screenShake = 0;
   draw();
 }
 
