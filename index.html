@@ -923,20 +923,18 @@ function closeSettings() {
 // Firebase config — fill in from console.firebase.google.com
 // Project settings → Your apps → Web app → SDK setup
 const FIREBASE_CONFIG = {
-  apiKey:            '',
-  authDomain:        '',
-  projectId:         '',
-  storageBucket:     '',   // e.g. 'your-project.appspot.com'
-  messagingSenderId: '',
-  appId:             '',
+  apiKey:            'AIzaSyA2I0adFWW2FDNjCciyZc-_N81wiB94bMc',
+  authDomain:        'daglezja-game.firebaseapp.com',
+  projectId:         'daglezja-game',
+  storageBucket:     'daglezja-game.firebasestorage.app',
+  messagingSenderId: '426870914835',
+  appId:             '1:426870914835:web:ccd599428a906e63d264e6',
 };
 
 const CHAR_STORAGE_KEY = 'blockrunner_chars_v1';
 let charEditIdx  = -1;
 let cropCallback = null;
-let fireUser     = null;   // Firebase Auth user (null = not signed in)
 let _fbStorage   = null;   // firebase.storage() handle
-let _fbAuth      = null;   // firebase.auth() handle
 
 // ── localStorage persistence ──────────────────────────────────────────────────
 function loadCharactersFromStorage() {
@@ -1228,14 +1226,13 @@ document.getElementById('crop-ok-btn').addEventListener('click', () => {
 });
 
 // ── Firebase sync ─────────────────────────────────────────────────────────────
-// Storage layout (all under characters/ in your Storage bucket):
+// Storage layout:
 //   characters/char-{i}-{mood}.jpg   ← cropped 128×128 images
 //   characters/meta.json             ← names + storage paths
 //
-// Storage rules (paste into Firebase console → Storage → Rules):
+// Storage rules (Firebase console → Storage → Rules):
 //   match /characters/{file} {
-//     allow read:  if true;
-//     allow write: if request.auth != null;
+//     allow read, write: if true;
 //   }
 
 function loadScriptsSeq(urls, cb) {
@@ -1251,29 +1248,11 @@ function initFirebase() {
   const VER = '10.12.0';
   loadScriptsSeq([
     `https://www.gstatic.com/firebasejs/${VER}/firebase-app-compat.js`,
-    `https://www.gstatic.com/firebasejs/${VER}/firebase-auth-compat.js`,
     `https://www.gstatic.com/firebasejs/${VER}/firebase-storage-compat.js`,
   ], () => {
-    const app  = window.firebase.initializeApp(FIREBASE_CONFIG);
-    _fbAuth    = window.firebase.auth(app);
-    _fbStorage = window.firebase.storage(app);
-    _fbAuth.onAuthStateChanged(user => {
-      fireUser = user;
-      renderSyncSection();
-      // Auto-load on sign-in
-      if (user) firebaseLoadAll();
-    });
+    _fbStorage = window.firebase.storage(window.firebase.initializeApp(FIREBASE_CONFIG));
+    firebaseLoadAll();   // auto-load shared characters on startup
   });
-}
-
-function firebaseSignIn() {
-  const provider = new window.firebase.auth.GoogleAuthProvider();
-  _fbAuth.signInWithPopup(provider).catch(err => {
-    setSyncStatus('Sign-in failed: ' + err.message);
-  });
-}
-function firebaseSignOut() {
-  _fbAuth.signOut();
 }
 
 function setSyncStatus(msg) {
@@ -1282,7 +1261,6 @@ function setSyncStatus(msg) {
 }
 
 async function firebaseSaveAll() {
-  if (!fireUser) { firebaseSignIn(); return; }
   setSyncStatus('Uploading…');
   try {
     const root = _fbStorage.ref('characters');
@@ -1348,43 +1326,23 @@ async function firebaseLoadAll() {
 function renderSyncSection() {
   const wrap = document.getElementById('char-drive-section');
   if (!FIREBASE_CONFIG.apiKey) { wrap.innerHTML = ''; return; }
-
-  // Firebase SDK not loaded yet
-  if (!_fbAuth) {
-    wrap.innerHTML = `<div style="padding:16px 16px 4px">
-      <p class="s-section-label">Cloud Sync</p>
-      <div class="drive-card"><div class="drive-row">
-        <span class="drive-status" id="sync-status-text">Connecting…</span>
-      </div></div></div>`;
-    return;
-  }
-
-  const signedIn = !!fireUser;
-  const email    = fireUser ? fireUser.email : '';
   wrap.innerHTML = `
     <div style="padding:16px 16px 4px">
-      <p class="s-section-label">Firebase Sync</p>
+      <p class="s-section-label">Cloud Sync</p>
       <div class="drive-card">
         <div class="drive-row">
           <span class="drive-status" id="sync-status-text">
-            ${signedIn ? `✓ ${email}` : 'Not signed in'}
+            ${_fbStorage ? 'Ready' : 'Connecting…'}
           </span>
-          <button class="btn-drive" id="sync-auth-btn">
-            ${signedIn ? 'Sign Out' : 'Sign In'}
-          </button>
         </div>
-        ${signedIn ? `
         <div class="drive-row">
-          <button class="btn-drive" style="flex:1" id="sync-save-btn">↑ Save</button>
-          <button class="btn-drive" style="flex:1" id="sync-load-btn">↓ Load</button>
-        </div>` : ''}
+          <button class="btn-drive" style="flex:1" id="sync-save-btn">↑ Save for everyone</button>
+          <button class="btn-drive" style="flex:1" id="sync-load-btn">↓ Load latest</button>
+        </div>
       </div>
     </div>`;
-
-  document.getElementById('sync-auth-btn').addEventListener('click',
-    () => signedIn ? firebaseSignOut() : firebaseSignIn());
-  document.getElementById('sync-save-btn')?.addEventListener('click', firebaseSaveAll);
-  document.getElementById('sync-load-btn')?.addEventListener('click', firebaseLoadAll);
+  document.getElementById('sync-save-btn').addEventListener('click', firebaseSaveAll);
+  document.getElementById('sync-load-btn').addEventListener('click', firebaseLoadAll);
 }
 
 function drawDead() {
