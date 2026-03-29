@@ -150,17 +150,23 @@ function genNext() {
 
 // ── Choice path generation ────────────────────────────────────────────────────
 function generateChoicePaths() {
-  const forkX  = Math.max(genX, cameraX + Math.round(W * 1.5 / B) * B);
+  // Place fork ~1 screen ahead so the player reaches it while dialogue is still open
+  const forkX = Math.round((cameraX + W * 1.2) / B) * B;
+
+  // Clear everything pre-generated at or beyond the fork
+  platforms = platforms.filter(p => p.wx + p.wb * B <= forkX);
+
+  // Approach platform connecting current terrain to the fork
+  const lastEnd = platforms.reduce((mx, p) => Math.max(mx, p.wx + p.wb * B), cameraX);
+  if (forkX > lastEnd) {
+    platforms.push({ wx: lastEnd, y: H - B * 3, wb: Math.ceil((forkX - lastEnd) / B) });
+  }
+
   const count  = 5;
   const pw     = 4;
   const step   = (pw + 3) * B;
   const upperY = H - B * 7;
   const lowerY = H - B * 3;
-
-  // Bridge from current gen position to fork start
-  if (forkX > genLastRight) {
-    platforms.push({ wx: genLastRight, y: genLastY, wb: Math.ceil((forkX - genLastRight) / B) });
-  }
 
   for (let i = 0; i < count; i++) {
     const x = forkX + i * step;
@@ -761,12 +767,15 @@ function press(px, py) {
   }
 
   if (state === 'dialogue') {
-    // Fast-forward typewriter
     if (dlg.phase === 'typing') {
       dlg.typeIdx = dlg.question.text.length;
       dlg.phase   = 'choices';
     }
-    // Fall through to allow jumping
+    if (player.onGround) {
+      player.vy       = JUMP_VY;
+      player.onGround = false;
+    }
+    return;
   }
 
   if (state === 'dead') {
@@ -776,7 +785,7 @@ function press(px, py) {
     return;
   }
 
-  if ((state === 'playing' || state === 'dialogue') && player.onGround) {
+  if (state === 'playing' && player.onGround) {
     player.vy       = JUMP_VY;
     player.onGround = false;
   }
