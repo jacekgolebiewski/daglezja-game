@@ -920,8 +920,8 @@ function closeSettings() {
 // Fill in your Google OAuth client ID to enable Drive sync.
 // Setup: console.cloud.google.com → new project → enable Drive API →
 //        Credentials → OAuth web client → add your page URL as origin.
-const GOOGLE_CLIENT_ID = ''; // e.g. '123456789-abc.apps.googleusercontent.com'
-const DRIVE_FOLDER_NAME = 'Block Runner Characters';
+const GOOGLE_CLIENT_ID  = ''; // e.g. '123456789-abc.apps.googleusercontent.com'
+const DRIVE_FOLDER_ID   = '1l89TwFZMXqTx0X2hkz9uyp4l0VRqZGTo'; // shared Drive folder
 
 const CHAR_STORAGE_KEY = 'blockrunner_chars_v1';
 let charEditIdx   = -1;
@@ -1247,20 +1247,6 @@ function driveSignOut() {
   });
 }
 
-async function driveGetFolderId() {
-  const r = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=name%3D'${encodeURIComponent(DRIVE_FOLDER_NAME)}'+and+mimeType%3D'application%2Fvnd.google-apps.folder'+and+trashed%3Dfalse&fields=files(id)`,
-    { headers: { Authorization: `Bearer ${driveToken}` } }
-  ).then(r => r.json());
-  if (r.files && r.files.length) return r.files[0].id;
-  const f = await fetch('https://www.googleapis.com/drive/v3/files', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${driveToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: DRIVE_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' }),
-  }).then(r => r.json());
-  return f.id;
-}
-
 async function driveUpsertFile(parentId, name, body, mime) {
   const search = await fetch(
     `https://www.googleapis.com/drive/v3/files?q=name%3D'${encodeURIComponent(name)}'+and+'${parentId}'+in+parents+and+trashed%3Dfalse&fields=files(id)`,
@@ -1292,7 +1278,7 @@ async function driveSaveAll() {
   if (!driveToken) { driveSignIn(); return; }
   driveSetStatus('Uploading…');
   try {
-    const folderId = await driveGetFolderId();
+    const folderId = DRIVE_FOLDER_ID;
     const meta     = {};
     for (let i = 0; i < CHARACTERS.length; i++) {
       const ch = CHARACTERS[i];
@@ -1319,7 +1305,7 @@ async function driveLoadAll() {
   if (!driveToken) { driveSignIn(); return; }
   driveSetStatus('Loading from Drive…');
   try {
-    const folderId = await driveGetFolderId();
+    const folderId = DRIVE_FOLDER_ID;
     const search   = await fetch(
       `https://www.googleapis.com/drive/v3/files?q=name%3D'characters-meta.json'+and+'${folderId}'+in+parents+and+trashed%3Dfalse&fields=files(id)`,
       { headers: { Authorization: `Bearer ${driveToken}` } }
