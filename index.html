@@ -17,7 +17,7 @@ const C = document.getElementById('c');
 const ctx = C.getContext('2d');
 
 // ── Characters (swap these out to customise — images/avatars to be added externally) ──
-const VERSION = 'v0.0.9';
+const VERSION = 'v0.1.0';
 
 const CHARACTERS = [
   { name: 'Rex',    color: '#22c55e', moods: { default: '🦕', happy: '🥳', angry: '🦖' } },
@@ -441,8 +441,8 @@ function drawHUD() {
   ctx.textAlign  = 'left';
   ctx.fillText('SPEED', bx, by - 6);
 
-  // Cog / settings button (bottom-right)
-  const cbSz = 36, cbX = W - cbSz - 12, cbY = H - cbSz - 12;
+  // Cog / settings button (top-left)
+  const cbSz = 34, cbX = 8, cbY = 8;
   cogBtn = { x: cbX, y: cbY, w: cbSz, h: cbSz };
   ctx.fillStyle = 'rgba(0,0,0,0.45)';
   roundRect(cbX, cbY, cbSz, cbSz, 8);
@@ -497,6 +497,17 @@ function drawCover() {
   ctx.font      = `${Math.min(11, W * 0.028)}px monospace`;
   ctx.textAlign = 'right';
   ctx.fillText(VERSION, W - 12, H - 10);
+
+  // Cog button (same position as HUD)
+  const cbSz = 34, cbX = 8, cbY = 8;
+  cogBtn = { x: cbX, y: cbY, w: cbSz, h: cbSz };
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  roundRect(cbX, cbY, cbSz, cbSz, 8);
+  ctx.fill();
+  ctx.font      = `${Math.round(cbSz * 0.56)}px serif`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#666688';
+  ctx.fillText('⚙', cbX + cbSz / 2, cbY + cbSz * 0.74);
 }
 
 // Returns card layout constants (shared between draw & hit-test)
@@ -743,8 +754,8 @@ function roundRect(x, y, w, h, r) {
 function press(px, py) {
   holding = true;
 
-  // Cog button → pause/settings (works during play and dialogue)
-  if ((state === 'playing' || state === 'dialogue') && cogBtn &&
+  // Cog button → pause/settings (works on cover, during play and dialogue)
+  if ((state === 'cover' || state === 'playing' || state === 'dialogue') && cogBtn &&
       px >= cogBtn.x && px <= cogBtn.x + cogBtn.w &&
       py >= cogBtn.y && py <= cogBtn.y + cogBtn.h) {
     pausedFromState = state;
