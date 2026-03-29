@@ -65,6 +65,106 @@
     .s-row:last-child { border-bottom: none; }
     .s-key { font-size: 16px; }
     .s-val { font-size: 16px; color: #8e8e93; }
+    .s-row-tappable { cursor: pointer; }
+    .s-row-tappable:hover { background: #f5f5fa; }
+
+    /* ── Character Manager overlay ───────────────────────────────────────────── */
+    #char-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      z-index: 200;
+      background: #f2f2f7;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      color: #1c1c1e;
+      overflow-y: auto;
+      touch-action: auto;
+      user-select: auto;
+    }
+    .char-avatar-wrap {
+      width: 44px; height: 44px; border-radius: 8px;
+      background: #f0f0f5; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: 28px;
+    }
+    .char-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; }
+    .char-info { flex: 1; min-width: 0; }
+    .char-name  { font-size: 16px; font-weight: 600; }
+    .char-sub   { font-size: 13px; color: #8e8e93; margin-top: 2px; }
+    .char-arrow { color: #c7c7cc; font-size: 20px; font-weight: 300; }
+
+    /* Character editor */
+    .char-edit-wrap { padding: 20px 16px 48px; }
+    .char-edit-name {
+      width: 100%; padding: 12px 14px;
+      border: 1.5px solid #d1d1d6; border-radius: 10px;
+      font-size: 16px; font-family: inherit;
+      margin-bottom: 24px; background: #fff;
+    }
+    .char-edit-name:focus { outline: none; border-color: #007aff; }
+    .mood-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+    .mood-cell {
+      background: #fff; border-radius: 12px; padding: 14px 10px;
+      text-align: center; cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      border: 2px dashed #d1d1d6; transition: border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mood-cell:hover  { border-color: #007aff; }
+    .mood-cell.has-img { border-style: solid; border-color: #34c759; }
+    .mood-cell img   { width: 72px; height: 72px; border-radius: 8px; object-fit: cover; display: block; margin: 0 auto 8px; }
+    .mood-emoji      { font-size: 44px; line-height: 72px; display: block; }
+    .mood-label      { font-size: 13px; font-weight: 600; color: #1c1c1e; }
+    .mood-hint       { font-size: 11px; color: #8e8e93; margin-top: 2px; }
+    .btn-primary {
+      background: #007aff; color: #fff; border: none;
+      border-radius: 10px; padding: 14px 24px;
+      font-size: 16px; font-weight: 600; cursor: pointer;
+      width: 100%; margin-bottom: 12px; font-family: inherit;
+    }
+    .btn-primary:hover { background: #0066d6; }
+
+    /* Drive sync */
+    .drive-card {
+      background: #fff; border-radius: 12px; margin: 0 16px 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow: hidden;
+    }
+    .drive-row { display: flex; align-items: center; gap: 10px; padding: 13px 16px; border-bottom: 1px solid #e5e5ea; }
+    .drive-row:last-child { border-bottom: none; }
+    .drive-status { flex: 1; font-size: 14px; color: #8e8e93; }
+    .btn-drive {
+      background: none; border: 1.5px solid #d1d1d6; border-radius: 8px;
+      padding: 6px 12px; font-size: 13px; cursor: pointer; font-family: inherit;
+      white-space: nowrap;
+    }
+    .btn-drive:hover { border-color: #007aff; color: #007aff; }
+
+    /* Crop modal */
+    #crop-modal {
+      display: none;
+      position: fixed; inset: 0; z-index: 300;
+      background: rgba(0,0,0,0.88);
+      flex-direction: column; align-items: center; justify-content: center;
+      touch-action: none; gap: 16px;
+    }
+    #crop-modal.open { display: flex; }
+    #crop-canvas {
+      border: 3px solid #007aff; border-radius: 10px;
+      cursor: grab; touch-action: none; display: block;
+      max-width: 90vw; max-height: 55vh;
+    }
+    #crop-canvas:active { cursor: grabbing; }
+    .crop-btns { display: flex; gap: 14px; }
+    .btn-crop-ok {
+      background: #007aff; color: #fff; border: none;
+      border-radius: 10px; padding: 13px 30px; font-size: 16px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    .btn-crop-cancel {
+      background: rgba(255,255,255,0.15); color: #fff; border: none;
+      border-radius: 10px; padding: 13px 30px; font-size: 16px;
+      cursor: pointer; font-family: inherit;
+    }
+    .crop-hint { color: rgba(255,255,255,0.5); font-size: 12px; font-family: -apple-system, sans-serif; }
   </style>
 </head>
 <body>
@@ -77,6 +177,13 @@
     <span class="s-spacer"></span>
   </div>
   <div class="s-body">
+    <p class="s-section-label">Customise</p>
+    <div class="s-card">
+      <div class="s-row s-row-tappable" id="s-characters">
+        <span class="s-key">Characters</span>
+        <span class="s-val">Manage ›</span>
+      </div>
+    </div>
     <p class="s-section-label">About</p>
     <div class="s-card">
       <div class="s-row">
@@ -91,17 +198,51 @@
   </div>
 </div>
 
+<!-- ── Character Management overlay ──────────────────────────────────────── -->
+<div id="char-overlay">
+  <div class="s-nav">
+    <button class="s-back" id="char-back">&#8592; Back</button>
+    <span class="s-nav-title" id="char-title">Characters</span>
+    <span class="s-spacer"></span>
+  </div>
+  <div id="char-list-view">
+    <div id="char-drive-section"></div>
+    <div id="char-list-items"></div>
+  </div>
+  <div id="char-edit-view" style="display:none">
+    <div class="char-edit-wrap">
+      <p class="s-section-label">Name</p>
+      <input type="text" id="char-edit-name" class="char-edit-name" placeholder="Character name" maxlength="24" autocomplete="off" />
+      <p class="s-section-label">Mood Images <span style="font-weight:400;text-transform:none;font-size:12px;color:#8e8e93">· tap a mood to upload &amp; crop</span></p>
+      <div class="mood-grid" id="mood-grid"></div>
+      <button class="btn-primary" id="char-save-btn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Crop modal ──────────────────────────────────────────────────────────── -->
+<div id="crop-modal">
+  <canvas id="crop-canvas" width="280" height="280"></canvas>
+  <div class="crop-btns">
+    <button class="btn-crop-cancel" id="crop-cancel-btn">Cancel</button>
+    <button class="btn-crop-ok"     id="crop-ok-btn">Use This</button>
+  </div>
+  <p class="crop-hint">Drag to reposition · scroll / pinch to zoom</p>
+</div>
+<input type="file" id="img-file-input" accept="image/*" style="display:none" />
+
 <script>
 const C = document.getElementById('c');
 const ctx = C.getContext('2d');
 
-// ── Characters (swap these out to customise — images/avatars to be added externally) ──
-const VERSION = 'v0.1.1';
+// ── Characters ────────────────────────────────────────────────────────────────
+const VERSION = 'v0.1.2';
 
+// imgs / _imgData populated at runtime from localStorage or Google Drive
 const CHARACTERS = [
-  { name: 'Rex',    color: '#22c55e', moods: { default: '🦕', happy: '🥳', angry: '🦖' } },
-  { name: 'R0B0',   color: '#60a5fa', moods: { default: '🤖', happy: '🤩', angry: '💢' } },
-  { name: 'Merlin', color: '#c084fc', moods: { default: '🧙', happy: '✨', angry: '🤬' } },
+  { name: 'Rex',    color: '#22c55e', moods: { default: '🦕', happy: '🥳', angry: '🦖', sad: '😢' }, imgs: {}, _imgData: {} },
+  { name: 'R0B0',   color: '#60a5fa', moods: { default: '🤖', happy: '🤩', angry: '💢', sad: '🔋' }, imgs: {}, _imgData: {} },
+  { name: 'Merlin', color: '#c084fc', moods: { default: '🧙', happy: '✨', angry: '🤬', sad: '😔' }, imgs: {}, _imgData: {} },
 ];
 
 // ── Funny questions ───────────────────────────────────────────────────────────
@@ -641,11 +782,23 @@ function drawAvatarSelect() {
     roundRect(cx, cardY, cardW, cardH, 14);
     ctx.stroke();
 
-    // Emoji
+    // Avatar image or emoji
     const emojiSz = Math.min(48, cardW * 0.52);
-    ctx.font      = `${emojiSz}px serif`;
-    ctx.textAlign = 'center';
-    ctx.fillText(ch.moods.default, cx + cardW / 2, cardY + cardH * 0.42);
+    const imgObj  = ch.imgs.default;
+    if (imgObj && imgObj.complete && imgObj.naturalWidth) {
+      const isz = emojiSz * 1.3;
+      const ix  = cx + cardW / 2 - isz / 2;
+      const iy  = cardY + cardH * 0.13;
+      ctx.save();
+      roundRect(ix, iy, isz, isz, 8);
+      ctx.clip();
+      ctx.drawImage(imgObj, ix, iy, isz, isz);
+      ctx.restore();
+    } else {
+      ctx.font      = `${emojiSz}px serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText(ch.moods.default, cx + cardW / 2, cardY + cardH * 0.42);
+    }
 
     // Name
     ctx.fillStyle = isHover ? ch.color : '#cccccc';
@@ -687,14 +840,25 @@ function drawDialogue() {
   ctx.fillStyle = ch.color;
   ctx.fillRect(0, barH - 2, W, 2);
 
-  // Character emoji (left side)
+  // Character image or emoji (left side)
   const moodKey = dlg.phase === 'reacting'
     ? (dlg.selectedAnswer === q.correct ? 'happy' : 'angry') : 'default';
   const emojiSz = Math.min(34, barH * 0.76);
-  ctx.font      = `${emojiSz}px serif`;
-  ctx.textAlign = 'left';
-  ctx.fillText(ch.moods[moodKey] || ch.moods.default,
-    10 + dlg.shakeX, barH * 0.74 + dlg.charBounce);
+  const dlgImg  = ch.imgs[moodKey] || ch.imgs.default;
+  if (dlgImg && dlgImg.complete && dlgImg.naturalWidth) {
+    const ix = 10 + dlg.shakeX;
+    const iy = barH / 2 - emojiSz / 2 + dlg.charBounce;
+    ctx.save();
+    roundRect(ix, iy, emojiSz, emojiSz, 4);
+    ctx.clip();
+    ctx.drawImage(dlgImg, ix, iy, emojiSz, emojiSz);
+    ctx.restore();
+  } else {
+    ctx.font      = `${emojiSz}px serif`;
+    ctx.textAlign = 'left';
+    ctx.fillText(ch.moods[moodKey] || ch.moods.default,
+      10 + dlg.shakeX, barH * 0.74 + dlg.charBounce);
+  }
 
   // Name tag
   ctx.fillStyle = ch.color;
@@ -739,6 +903,7 @@ function drawPaused() {
 // ── Settings overlay (HTML) ───────────────────────────────────────────────────
 const settingsOverlay = document.getElementById('settings-overlay');
 document.getElementById('s-close').addEventListener('click', closeSettings);
+document.getElementById('s-characters').addEventListener('click', openCharacterManager);
 
 function openSettings(fromState) {
   pausedFromState = fromState;
@@ -749,6 +914,487 @@ function openSettings(fromState) {
 function closeSettings() {
   settingsOverlay.style.display = 'none';
   state = pausedFromState;
+}
+
+// ── Character Manager ─────────────────────────────────────────────────────────
+// Fill in your Google OAuth client ID to enable Drive sync.
+// Setup: console.cloud.google.com → new project → enable Drive API →
+//        Credentials → OAuth web client → add your page URL as origin.
+const GOOGLE_CLIENT_ID = ''; // e.g. '123456789-abc.apps.googleusercontent.com'
+const DRIVE_FOLDER_NAME = 'Block Runner Characters';
+
+const CHAR_STORAGE_KEY = 'blockrunner_chars_v1';
+let charEditIdx   = -1;
+let cropCallback  = null;
+let driveToken    = null;
+let driveSignedIn = false;
+let tokenClient   = null;
+
+// ── localStorage persistence ──────────────────────────────────────────────────
+function loadCharactersFromStorage() {
+  try {
+    const raw = localStorage.getItem(CHAR_STORAGE_KEY);
+    if (!raw) return;
+    JSON.parse(raw).forEach((s, i) => {
+      if (!CHARACTERS[i]) return;
+      if (s.name)  CHARACTERS[i].name  = s.name;
+      if (s.color) CHARACTERS[i].color = s.color;
+      ['default','happy','angry','sad'].forEach(mood => {
+        if (s.images && s.images[mood]) {
+          CHARACTERS[i]._imgData[mood] = s.images[mood];
+          const img = new Image();
+          img.src = s.images[mood];
+          CHARACTERS[i].imgs[mood] = img;
+        }
+      });
+    });
+  } catch(e) { /* corrupt storage – ignore */ }
+}
+
+function saveCharactersToStorage() {
+  const data = CHARACTERS.map(ch => ({
+    name:   ch.name,
+    color:  ch.color,
+    images: ch._imgData,
+  }));
+  localStorage.setItem(CHAR_STORAGE_KEY, JSON.stringify(data));
+}
+
+// ── Character Manager UI ──────────────────────────────────────────────────────
+const charOverlay = document.getElementById('char-overlay');
+
+document.getElementById('char-back').addEventListener('click', () => {
+  if (document.getElementById('char-edit-view').style.display !== 'none') {
+    showCharList();
+  } else {
+    charOverlay.style.display = 'none';
+    settingsOverlay.style.display = 'block';
+  }
+});
+
+function openCharacterManager() {
+  settingsOverlay.style.display = 'none';
+  charOverlay.style.display     = 'block';
+  showCharList();
+}
+
+function showCharList() {
+  document.getElementById('char-list-view').style.display = 'block';
+  document.getElementById('char-edit-view').style.display = 'none';
+  document.getElementById('char-title').textContent = 'Characters';
+  renderDriveSection();
+  renderCharList();
+}
+
+function renderCharList() {
+  const container = document.getElementById('char-list-items');
+  container.innerHTML = '';
+
+  const section = document.createElement('div');
+  section.style.padding = '8px 16px 16px';
+
+  const label = document.createElement('p');
+  label.className   = 's-section-label';
+  label.textContent = 'Game Characters';
+  section.appendChild(label);
+
+  const card = document.createElement('div');
+  card.className = 's-card';
+
+  CHARACTERS.forEach((ch, i) => {
+    const row  = document.createElement('div');
+    row.className = 's-row s-row-tappable';
+
+    const avatarWrap = document.createElement('div');
+    avatarWrap.className = 'char-avatar-wrap';
+    if (ch.imgs.default && ch.imgs.default.complete && ch.imgs.default.naturalWidth) {
+      const img = document.createElement('img');
+      img.src = ch.imgs.default.src;
+      avatarWrap.appendChild(img);
+    } else {
+      avatarWrap.textContent = ch.moods.default;
+    }
+
+    const info = document.createElement('div');
+    info.className = 'char-info';
+    info.innerHTML = `<div class="char-name" style="color:${ch.color}">${ch.name}</div>`
+                   + `<div class="char-sub">${Object.keys(ch._imgData).length} / 4 moods customised</div>`;
+
+    const arrow = document.createElement('span');
+    arrow.className   = 'char-arrow';
+    arrow.textContent = '›';
+
+    row.appendChild(avatarWrap);
+    row.appendChild(info);
+    row.appendChild(arrow);
+    row.addEventListener('click', () => openCharEditor(i));
+    card.appendChild(row);
+  });
+
+  section.appendChild(card);
+  container.appendChild(section);
+}
+
+// ── Mood metadata ─────────────────────────────────────────────────────────────
+const MOOD_META = {
+  default: { label: 'Default', hint: 'Cover & dialogue' },
+  happy:   { label: 'Happy',   hint: 'Correct answer'   },
+  angry:   { label: 'Angry',   hint: 'Wrong answer'     },
+  sad:     { label: 'Sad',     hint: 'Game over'        },
+};
+
+function openCharEditor(idx) {
+  charEditIdx = idx;
+  const ch    = CHARACTERS[idx];
+  document.getElementById('char-list-view').style.display = 'none';
+  document.getElementById('char-edit-view').style.display = 'block';
+  document.getElementById('char-title').textContent = ch.name;
+  document.getElementById('char-edit-name').value   = ch.name;
+  renderMoodGrid(ch);
+}
+
+function renderMoodGrid(ch) {
+  const grid = document.getElementById('mood-grid');
+  grid.innerHTML = '';
+  ['default','happy','angry','sad'].forEach(mood => {
+    const hasImg = !!(ch.imgs[mood] && ch.imgs[mood].complete && ch.imgs[mood].naturalWidth);
+    const cell   = document.createElement('div');
+    cell.className = 'mood-cell' + (hasImg ? ' has-img' : '');
+
+    if (hasImg) {
+      cell.innerHTML = `<img src="${ch.imgs[mood].src}" alt="${mood}" />`
+                     + `<div class="mood-label">${MOOD_META[mood].label}</div>`
+                     + `<div class="mood-hint">Tap to change</div>`;
+    } else {
+      cell.innerHTML = `<span class="mood-emoji">${ch.moods[mood]}</span>`
+                     + `<div class="mood-label">${MOOD_META[mood].label}</div>`
+                     + `<div class="mood-hint">${MOOD_META[mood].hint} · tap to add</div>`;
+    }
+    cell.addEventListener('click', () => pickImage(mood));
+    grid.appendChild(cell);
+  });
+}
+
+document.getElementById('char-save-btn').addEventListener('click', () => {
+  const name = document.getElementById('char-edit-name').value.trim();
+  if (!name) return;
+  CHARACTERS[charEditIdx].name = name;
+  saveCharactersToStorage();
+  showCharList();
+});
+
+// ── Image picker → crop ───────────────────────────────────────────────────────
+let pendingMood = null;
+const fileInput = document.getElementById('img-file-input');
+
+function pickImage(mood) {
+  pendingMood  = mood;
+  fileInput.value = '';
+  fileInput.click();
+}
+
+fileInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => openCropModal(ev.target.result, dataUrl => {
+    const ch = CHARACTERS[charEditIdx];
+    ch._imgData[pendingMood] = dataUrl;
+    const img = new Image();
+    img.onload = () => {
+      ch.imgs[pendingMood] = img;
+      saveCharactersToStorage();
+      renderMoodGrid(ch);
+      document.getElementById('char-title').textContent = ch.name;
+    };
+    img.src = dataUrl;
+  });
+  reader.readAsDataURL(file);
+});
+
+// ── Crop tool ─────────────────────────────────────────────────────────────────
+const cropModal  = document.getElementById('crop-modal');
+const cropCanvas = document.getElementById('crop-canvas');
+const cropCtx    = cropCanvas.getContext('2d');
+
+const cs = { img: null, ox: 0, oy: 0, scale: 1, size: 280,
+             dragging: false, dragSx: 0, dragSy: 0, dragOx: 0, dragOy: 0,
+             pinchDist: 0 };
+
+function openCropModal(src, cb) {
+  cropCallback = cb;
+  const srcImg = new Image();
+  srcImg.onload = () => {
+    cs.img  = srcImg;
+    const sz = Math.min(Math.floor(Math.min(window.innerWidth * 0.88, window.innerHeight * 0.52)), 320);
+    cs.size  = sz;
+    cropCanvas.width  = sz;
+    cropCanvas.height = sz;
+    // Scale image so its shorter side fills the square
+    const fill = Math.max(sz / srcImg.width, sz / srcImg.height);
+    cs.scale = fill;
+    cs.ox    = (sz - srcImg.width  * fill) / 2;
+    cs.oy    = (sz - srcImg.height * fill) / 2;
+    cropModal.classList.add('open');
+    drawCropPreview();
+  };
+  srcImg.src = src;
+}
+
+function drawCropPreview() {
+  cropCtx.clearRect(0, 0, cs.size, cs.size);
+  cropCtx.drawImage(cs.img, cs.ox, cs.oy, cs.img.width * cs.scale, cs.img.height * cs.scale);
+}
+
+function cropZoom(factor, pivotX, pivotY) {
+  const px = pivotX ?? cs.size / 2;
+  const py = pivotY ?? cs.size / 2;
+  cs.ox    = px + (cs.ox - px) * factor;
+  cs.oy    = py + (cs.oy - py) * factor;
+  cs.scale *= factor;
+  drawCropPreview();
+}
+
+// Pointer drag
+cropCanvas.addEventListener('pointerdown', e => {
+  cropCanvas.setPointerCapture(e.pointerId);
+  cs.dragging = true;
+  cs.dragSx   = e.clientX; cs.dragSy = e.clientY;
+  cs.dragOx   = cs.ox;     cs.dragOy = cs.oy;
+});
+cropCanvas.addEventListener('pointermove', e => {
+  if (!cs.dragging) return;
+  cs.ox = cs.dragOx + (e.clientX - cs.dragSx);
+  cs.oy = cs.dragOy + (e.clientY - cs.dragSy);
+  drawCropPreview();
+});
+cropCanvas.addEventListener('pointerup',     () => { cs.dragging = false; });
+cropCanvas.addEventListener('pointercancel', () => { cs.dragging = false; });
+
+// Mouse wheel zoom
+cropCanvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  cropZoom(e.deltaY < 0 ? 1.1 : 0.9);
+}, { passive: false });
+
+// Touch pinch zoom
+let _lastPinchDist = 0;
+cropCanvas.addEventListener('touchstart', e => {
+  if (e.touches.length === 2) {
+    _lastPinchDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    cs.dragging = false;
+  }
+}, { passive: true });
+cropCanvas.addEventListener('touchmove', e => {
+  if (e.touches.length !== 2) return;
+  const dist   = Math.hypot(
+    e.touches[0].clientX - e.touches[1].clientX,
+    e.touches[0].clientY - e.touches[1].clientY
+  );
+  if (_lastPinchDist > 0) cropZoom(dist / _lastPinchDist);
+  _lastPinchDist = dist;
+}, { passive: true });
+
+document.getElementById('crop-cancel-btn').addEventListener('click', () => {
+  cropModal.classList.remove('open');
+  cropCallback = null;
+});
+
+document.getElementById('crop-ok-btn').addEventListener('click', () => {
+  // Export at 128×128 JPEG — fits the game's block scale well
+  const out   = document.createElement('canvas');
+  out.width   = 128; out.height = 128;
+  const oc    = out.getContext('2d');
+  const ratio = 128 / cs.size;
+  oc.drawImage(cs.img,
+    cs.ox * ratio, cs.oy * ratio,
+    cs.img.width  * cs.scale * ratio,
+    cs.img.height * cs.scale * ratio
+  );
+  const dataUrl = out.toDataURL('image/jpeg', 0.88);
+  cropModal.classList.remove('open');
+  if (cropCallback) { cropCallback(dataUrl); cropCallback = null; }
+});
+
+// ── Google Drive sync ─────────────────────────────────────────────────────────
+function initGoogleDrive() {
+  if (!GOOGLE_CLIENT_ID) return;
+  const s = document.createElement('script');
+  s.src   = 'https://accounts.google.com/gsi/client';
+  s.onload = () => {
+    tokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope:     'https://www.googleapis.com/auth/drive.file',
+      callback:  resp => {
+        if (resp.error) return;
+        driveToken    = resp.access_token;
+        driveSignedIn = true;
+        renderDriveSection();
+      },
+    });
+  };
+  document.head.appendChild(s);
+}
+
+function driveSignIn()  { tokenClient && tokenClient.requestAccessToken(); }
+function driveSignOut() {
+  if (!driveToken) return;
+  window.google.accounts.oauth2.revoke(driveToken, () => {
+    driveToken = null; driveSignedIn = false; renderDriveSection();
+  });
+}
+
+async function driveGetFolderId() {
+  const r = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=name%3D'${encodeURIComponent(DRIVE_FOLDER_NAME)}'+and+mimeType%3D'application%2Fvnd.google-apps.folder'+and+trashed%3Dfalse&fields=files(id)`,
+    { headers: { Authorization: `Bearer ${driveToken}` } }
+  ).then(r => r.json());
+  if (r.files && r.files.length) return r.files[0].id;
+  const f = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${driveToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: DRIVE_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' }),
+  }).then(r => r.json());
+  return f.id;
+}
+
+async function driveUpsertFile(parentId, name, body, mime) {
+  const search = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=name%3D'${encodeURIComponent(name)}'+and+'${parentId}'+in+parents+and+trashed%3Dfalse&fields=files(id)`,
+    { headers: { Authorization: `Bearer ${driveToken}` } }
+  ).then(r => r.json());
+
+  if (search.files && search.files.length) {
+    // Patch existing file content
+    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${search.files[0].id}?uploadType=media`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${driveToken}`, 'Content-Type': mime },
+      body,
+    });
+    return search.files[0].id;
+  }
+  // Create via multipart
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify({ name, parents: [parentId] })], { type: 'application/json' }));
+  form.append('file', new Blob([body], { type: mime }));
+  const f = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${driveToken}` },
+    body: form,
+  }).then(r => r.json());
+  return f.id;
+}
+
+async function driveSaveAll() {
+  if (!driveToken) { driveSignIn(); return; }
+  driveSetStatus('Uploading…');
+  try {
+    const folderId = await driveGetFolderId();
+    const meta     = {};
+    for (let i = 0; i < CHARACTERS.length; i++) {
+      const ch = CHARACTERS[i];
+      meta[i]  = { name: ch.name, color: ch.color, imageFileIds: {} };
+      for (const mood of ['default','happy','angry','sad']) {
+        if (!ch._imgData[mood]) continue;
+        const b64  = ch._imgData[mood].split(',')[1];
+        const bin  = atob(b64);
+        const arr  = new Uint8Array(bin.length);
+        for (let j = 0; j < bin.length; j++) arr[j] = bin.charCodeAt(j);
+        const fileId = await driveUpsertFile(folderId, `char-${i}-${mood}.jpg`, arr.buffer, 'image/jpeg');
+        meta[i].imageFileIds[mood] = fileId;
+      }
+    }
+    await driveUpsertFile(folderId, 'characters-meta.json', JSON.stringify(meta), 'application/json');
+    driveSetStatus('✓ Saved to Google Drive');
+  } catch(err) {
+    driveSetStatus('Upload failed — check console');
+    console.error(err);
+  }
+}
+
+async function driveLoadAll() {
+  if (!driveToken) { driveSignIn(); return; }
+  driveSetStatus('Loading from Drive…');
+  try {
+    const folderId = await driveGetFolderId();
+    const search   = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=name%3D'characters-meta.json'+and+'${folderId}'+in+parents+and+trashed%3Dfalse&fields=files(id)`,
+      { headers: { Authorization: `Bearer ${driveToken}` } }
+    ).then(r => r.json());
+
+    if (!search.files || !search.files.length) { driveSetStatus('No data on Drive yet'); return; }
+    const meta = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${search.files[0].id}?alt=media`,
+      { headers: { Authorization: `Bearer ${driveToken}` } }
+    ).then(r => r.json());
+
+    for (const [idx, charMeta] of Object.entries(meta)) {
+      const i = parseInt(idx);
+      if (!CHARACTERS[i]) continue;
+      if (charMeta.name)  CHARACTERS[i].name  = charMeta.name;
+      if (charMeta.color) CHARACTERS[i].color = charMeta.color;
+      for (const [mood, fileId] of Object.entries(charMeta.imageFileIds || {})) {
+        const blob   = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+          { headers: { Authorization: `Bearer ${driveToken}` } }
+        ).then(r => r.blob());
+        await new Promise(res => {
+          const fr = new FileReader();
+          fr.onload = ev => {
+            const dataUrl = ev.target.result;
+            CHARACTERS[i]._imgData[mood] = dataUrl;
+            const img = new Image();
+            img.onload = () => { CHARACTERS[i].imgs[mood] = img; res(); };
+            img.src = dataUrl;
+          };
+          fr.readAsDataURL(blob);
+        });
+      }
+    }
+    saveCharactersToStorage();
+    driveSetStatus('✓ Loaded from Google Drive');
+    renderCharList();
+  } catch(err) {
+    driveSetStatus('Load failed — check console');
+    console.error(err);
+  }
+}
+
+function driveSetStatus(msg) {
+  const el = document.getElementById('drive-status-text');
+  if (el) el.textContent = msg;
+}
+
+function renderDriveSection() {
+  const wrap = document.getElementById('char-drive-section');
+  if (!GOOGLE_CLIENT_ID) { wrap.innerHTML = ''; return; }
+
+  const btnLabel = driveSignedIn ? 'Sign Out' : 'Sign In with Google';
+  wrap.innerHTML = `
+    <div style="padding:16px 16px 4px">
+      <p class="s-section-label">Cloud Sync</p>
+      <div class="drive-card">
+        <div class="drive-row">
+          <span class="drive-status" id="drive-status-text">
+            ${driveSignedIn ? '✓ Connected to Google Drive' : 'Not connected'}
+          </span>
+          <button class="btn-drive" id="drive-auth-btn">${btnLabel}</button>
+        </div>
+        ${driveSignedIn ? `
+        <div class="drive-row">
+          <button class="btn-drive" style="flex:1" id="drive-save-btn">↑ Save to Drive</button>
+          <button class="btn-drive" style="flex:1" id="drive-load-btn">↓ Load from Drive</button>
+        </div>` : ''}
+      </div>
+    </div>`;
+
+  document.getElementById('drive-auth-btn').addEventListener('click',
+    () => driveSignedIn ? driveSignOut() : driveSignIn());
+  document.getElementById('drive-save-btn')?.addEventListener('click', driveSaveAll);
+  document.getElementById('drive-load-btn')?.addEventListener('click', driveLoadAll);
 }
 
 function drawDead() {
@@ -878,6 +1524,8 @@ function loop(ts) {
 }
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
+loadCharactersFromStorage();
+initGoogleDrive();
 state    = 'cover';
 lastTime = 0;
 requestAnimationFrame(loop);
