@@ -2,328 +2,333 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Snake Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Block Runner</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    body {
-      background: #0f0f1a;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      font-family: 'Segoe UI', sans-serif;
-      color: #e0e0e0;
-    }
-
-    h1 {
-      font-size: 2.5rem;
-      letter-spacing: 0.2em;
-      color: #4ade80;
-      text-shadow: 0 0 20px #4ade8088;
-      margin-bottom: 0.5rem;
-    }
-
-    #scoreboard {
-      display: flex;
-      gap: 2rem;
-      margin-bottom: 1rem;
-      font-size: 1rem;
-      color: #a0a0c0;
-    }
-
-    #scoreboard span {
-      font-weight: bold;
-      color: #fff;
-    }
-
-    canvas {
-      border: 2px solid #4ade8044;
-      border-radius: 8px;
-      box-shadow: 0 0 40px #4ade8022;
-      background: #12121f;
-    }
-
-    #message {
-      margin-top: 1.2rem;
-      font-size: 1.1rem;
-      color: #a0a0c0;
-      min-height: 1.5em;
-      text-align: center;
-    }
-
-    #message strong {
-      color: #4ade80;
-    }
-
-    #controls {
-      margin-top: 1rem;
-      font-size: 0.8rem;
-      color: #555577;
-      text-align: center;
-      line-height: 1.8;
-    }
+    body { background: #0a0a0f; overflow: hidden; touch-action: none; user-select: none; }
+    canvas { display: block; }
   </style>
 </head>
 <body>
-  <h1>SNAKE</h1>
-  <div id="scoreboard">
-    Score: <span id="score">0</span>
-    &nbsp;|&nbsp;
-    Best: <span id="best">0</span>
-  </div>
-  <canvas id="canvas" width="400" height="400"></canvas>
-  <div id="message">Press <strong>Space</strong> or tap to start</div>
-  <div id="controls">
-    Arrow keys / WASD to move &nbsp;|&nbsp; Space to pause<br>
-    Mobile: swipe to steer
-  </div>
+<canvas id="c"></canvas>
+<script>
+const C = document.getElementById('c');
+const ctx = C.getContext('2d');
 
-  <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const scoreEl = document.getElementById('score');
-    const bestEl = document.getElementById('best');
-    const msgEl = document.getElementById('message');
+// ── Constants ───────────────────────────────────────────────────────────────
+const B             = 40;    // block size px
+const GRAVITY       = 2400;  // px/s²
+const JUMP_VY       = -800;  // px/s  (negative = upward)
+const FLOAT_GRAV    = 0.38;  // gravity multiplier while holding & ascending
+const PLAYER_SCR_X  = 130;   // fixed screen X of player
+const SPEED_START   = 230;   // px/s
+const SPEED_MAX     = 850;   // px/s
+const SPEED_STEP    = 30;    // added each interval
+const SPEED_INT     = 5;     // seconds between speed bumps
 
-    const GRID = 20;
-    const COLS = canvas.width / GRID;
-    const ROWS = canvas.height / GRID;
+// ── Globals ─────────────────────────────────────────────────────────────────
+let W, H;
+let state;           // 'cover' | 'playing' | 'dead'
+let player, cameraX, platforms;
+let speed, speedTimer, score, best;
+let holding, lastTime;
+let genX, genLastY, genLastRight;
 
-    const COLORS = {
-      head: '#4ade80',
-      body: '#22c55e',
-      bodyFade: '#166534',
-      food: '#f87171',
-      foodGlow: '#f8717188',
-      grid: '#ffffff08',
-    };
+best = 0;
 
-    let snake, dir, nextDir, food, score, best, state, animId, lastTime, speed;
+// ── Resize ───────────────────────────────────────────────────────────────────
+function resize() {
+  W = C.width  = window.innerWidth;
+  H = C.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
 
-    function init() {
-      snake = [
-        { x: 10, y: 10 },
-        { x: 9, y: 10 },
-        { x: 8, y: 10 },
-      ];
-      dir = { x: 1, y: 0 };
-      nextDir = { x: 1, y: 0 };
-      score = 0;
-      speed = 150;
-      lastTime = 0;
-      placeFood();
-      scoreEl.textContent = 0;
+// ── Init / reset game ────────────────────────────────────────────────────────
+function init() {
+  speed       = SPEED_START;
+  speedTimer  = 0;
+  score       = 0;
+  cameraX     = 0;
+  holding     = false;
+  platforms   = [];
+
+  const groundY     = H - B * 3;
+  const groundWidth = Math.ceil(W / B) * 3 + 4;  // 3 screens of safe ground
+
+  platforms.push({ wx: 0, y: groundY, wb: groundWidth });
+  genX        = groundWidth * B;
+  genLastY    = groundY;
+  genLastRight = genX;
+
+  player = {
+    wx: cameraX + PLAYER_SCR_X,
+    y:  groundY - (B - 6),   // feet on ground
+    vy: 0,
+    w:  B - 6,
+    h:  B - 6,
+    onGround: true,
+  };
+
+  // Pre-generate platforms ahead
+  while (genX < cameraX + W * 5) genNext();
+}
+
+// ── Procedural platform generation ──────────────────────────────────────────
+function genNext() {
+  const gapB = 2 + Math.floor(Math.random() * 3);           // gap: 2–4 blocks
+  const widB = 3 + Math.floor(Math.random() * 5);           // width: 3–7 blocks
+  const dyB  = Math.floor(Math.random() * 5) - 2;           // Δheight: –2..+2 blocks
+  const minY = H - B * 9;
+  const maxY = H - B * 3;
+  const newY = Math.max(minY, Math.min(maxY, genLastY + dyB * B));
+  const startX = genLastRight + gapB * B;
+
+  platforms.push({ wx: startX, y: newY, wb: widB });
+  genLastRight = startX + widB * B;
+  genLastY     = newY;
+  genX         = genLastRight;
+}
+
+// ── Update ───────────────────────────────────────────────────────────────────
+function update(dt) {
+  // Speed ramp
+  speedTimer += dt;
+  if (speedTimer >= SPEED_INT) {
+    speedTimer -= SPEED_INT;
+    speed = Math.min(SPEED_MAX, speed + SPEED_STEP);
+  }
+
+  // Auto-scroll camera; player follows at fixed screen X
+  cameraX  += speed * dt;
+  player.wx = cameraX + PLAYER_SCR_X;
+
+  // Vertical physics
+  const gMult = (holding && player.vy < 0) ? FLOAT_GRAV : 1;
+  player.vy   = Math.min(player.vy + GRAVITY * gMult * dt, 1400);
+
+  const prevBottom = player.y + player.h;
+  player.y        += player.vy * dt;
+  const curBottom  = player.y + player.h;
+
+  // Platform collision (top landing only)
+  player.onGround = false;
+  for (const p of platforms) {
+    if (player.wx + player.w <= p.wx || player.wx >= p.wx + p.wb * B) continue;
+    const pTop = p.y;
+    if (player.vy >= 0 && prevBottom <= pTop + 2 && curBottom >= pTop) {
+      player.y        = pTop - player.h;
+      player.vy       = 0;
+      player.onGround = true;
+      break;
     }
+  }
 
-    function placeFood() {
-      let pos;
-      do {
-        pos = { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) };
-      } while (snake.some(s => s.x === pos.x && s.y === pos.y));
-      food = pos;
+  // Score = blocks traveled
+  score = Math.floor(cameraX / B);
+  if (score > best) best = score;
+
+  // Death: fell below screen
+  if (player.y > H + B * 3) {
+    state = 'dead';
+  }
+
+  // Generate ahead & cull old platforms
+  while (genX < cameraX + W * 5) genNext();
+  platforms = platforms.filter(p => p.wx + p.wb * B > cameraX - B * 2);
+}
+
+// ── Draw ─────────────────────────────────────────────────────────────────────
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  ctx.fillStyle = '#0f0f1a';
+  ctx.fillRect(0, 0, W, H);
+
+  if (state !== 'cover') {
+    drawPlatforms();
+    drawPlayer();
+    drawHUD();
+  }
+
+  if (state === 'cover') drawCover();
+  if (state === 'dead')  drawDead();
+}
+
+function drawPlatforms() {
+  ctx.strokeStyle = '#888888';
+  ctx.lineWidth   = 2;
+  for (const p of platforms) {
+    const sx = p.wx - cameraX;
+    for (let i = 0; i < p.wb; i++) {
+      const bx = sx + i * B;
+      if (bx + B < -B || bx > W + B) continue;
+      ctx.strokeRect(bx + 1, p.y + 1, B - 2, B - 2);
     }
+  }
+}
 
-    function update(ts) {
-      animId = requestAnimationFrame(update);
-      if (ts - lastTime < speed) return;
-      lastTime = ts;
+function drawPlayer() {
+  const sx = player.wx - cameraX;
+  // Body
+  ctx.fillStyle = '#4ade80';
+  ctx.fillRect(sx, player.y, player.w, player.h);
+  // Eyes (right-facing)
+  ctx.fillStyle = '#0f0f1a';
+  ctx.fillRect(sx + player.w - 11, player.y + 6,  5, 4);
+  ctx.fillRect(sx + player.w - 11, player.y + 15, 5, 4);
+}
 
-      dir = nextDir;
-      const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+function drawHUD() {
+  // Score badge
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  roundRect(W - 140, 12, 128, 34, 6);
+  ctx.fill();
 
-      // Wall collision
-      if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS) {
-        return gameOver();
-      }
-      // Self collision
-      if (snake.some(s => s.x === head.x && s.y === head.y)) {
-        return gameOver();
-      }
+  ctx.fillStyle = '#ffffff';
+  ctx.font      = 'bold 22px monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText(score + 'm', W - 16, 37);
 
-      snake.unshift(head);
+  // Speed bar (bottom left)
+  const pct = (speed - SPEED_START) / (SPEED_MAX - SPEED_START);
+  const barW = 120, barH = 8, bx = 16, by = H - 28;
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.fillRect(bx - 2, by - 2, barW + 4, barH + 4);
+  ctx.fillStyle = pct > 0.7 ? '#f87171' : pct > 0.35 ? '#fbbf24' : '#4ade80';
+  ctx.fillRect(bx, by, barW * pct, barH);
+  ctx.strokeStyle = '#444';
+  ctx.lineWidth   = 1;
+  ctx.strokeRect(bx, by, barW, barH);
+  ctx.fillStyle  = '#666';
+  ctx.font       = '11px monospace';
+  ctx.textAlign  = 'left';
+  ctx.fillText('SPEED', bx, by - 6);
+}
 
-      if (head.x === food.x && head.y === food.y) {
-        score++;
-        scoreEl.textContent = score;
-        if (score > best) {
-          best = score;
-          bestEl.textContent = best;
-        }
-        speed = Math.max(60, 150 - score * 3);
-        placeFood();
-      } else {
-        snake.pop();
-      }
+function drawCover() {
+  // Dark overlay
+  ctx.fillStyle = 'rgba(10,10,20,0.94)';
+  ctx.fillRect(0, 0, W, H);
 
-      draw();
+  // Decorative blocks in background
+  ctx.strokeStyle = 'rgba(100,100,140,0.18)';
+  ctx.lineWidth = 2;
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < Math.ceil(W / B) + 1; col++) {
+      ctx.strokeRect(col * B + (row % 2) * (B / 2), H * 0.72 + row * B, B - 3, B - 3);
     }
+  }
 
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Title
+  const titleSize = Math.min(62, W * 0.13);
+  ctx.fillStyle = '#4ade80';
+  ctx.font      = `bold ${titleSize}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.shadowColor = '#4ade8066';
+  ctx.shadowBlur  = 24;
+  ctx.fillText('BLOCK RUNNER', W / 2, H * 0.34);
+  ctx.shadowBlur = 0;
 
-      // Grid
-      ctx.strokeStyle = COLORS.grid;
-      ctx.lineWidth = 0.5;
-      for (let x = 0; x <= canvas.width; x += GRID) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-      }
-      for (let y = 0; y <= canvas.height; y += GRID) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-      }
+  // Subtitle
+  ctx.fillStyle = '#ffffff';
+  ctx.font      = `bold ${Math.min(26, W * 0.065)}px monospace`;
+  ctx.fillText('TAP TO START', W / 2, H * 0.50);
 
-      // Food with glow
-      ctx.save();
-      ctx.shadowColor = COLORS.foodGlow;
-      ctx.shadowBlur = 12;
-      ctx.fillStyle = COLORS.food;
-      const pad = 3;
-      const r = GRID / 2 - pad;
-      const fx = food.x * GRID + GRID / 2;
-      const fy = food.y * GRID + GRID / 2;
-      ctx.beginPath();
-      ctx.arc(fx, fy, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+  ctx.fillStyle = '#555577';
+  ctx.font      = `${Math.min(15, W * 0.038)}px monospace`;
+  ctx.fillText('tap & hold = float higher', W / 2, H * 0.60);
 
-      // Snake
-      snake.forEach((seg, i) => {
-        const t = i / snake.length;
-        ctx.fillStyle = i === 0
-          ? COLORS.head
-          : lerpColor(COLORS.body, COLORS.bodyFade, t);
-        const x = seg.x * GRID + 1;
-        const y = seg.y * GRID + 1;
-        const sz = GRID - 2;
-        roundRect(ctx, x, y, sz, sz, 4);
-        ctx.fill();
-      });
+  if (best > 0) {
+    ctx.fillStyle = '#fbbf24';
+    ctx.font      = `${Math.min(18, W * 0.045)}px monospace`;
+    ctx.fillText('best  ' + best + 'm', W / 2, H * 0.69);
+  }
+}
 
-      // Eyes on head
-      const hx = snake[0].x * GRID;
-      const hy = snake[0].y * GRID;
-      ctx.fillStyle = '#0f0f1a';
-      const eyeOffset = dir.y === 0 ? [4, 5] : [5, 4];
-      const eyeShift = dir.x === 1 ? 12 : dir.x === -1 ? 3 : 7;
-      const eyeRow = dir.y === 1 ? 12 : dir.y === -1 ? 3 : 7;
-      ctx.beginPath();
-      ctx.arc(hx + eyeShift - eyeOffset[0] + eyeOffset[0], hy + eyeRow - eyeOffset[1] + eyeOffset[1] - 2, 2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(hx + eyeShift + eyeOffset[0], hy + eyeRow + eyeOffset[1] - 2, 2, 0, Math.PI * 2);
-      ctx.fill();
-    }
+function drawDead() {
+  ctx.fillStyle = 'rgba(0,0,0,0.78)';
+  ctx.fillRect(0, 0, W, H);
 
-    function roundRect(ctx, x, y, w, h, r) {
-      ctx.beginPath();
-      ctx.moveTo(x + r, y);
-      ctx.lineTo(x + w - r, y);
-      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-      ctx.lineTo(x + w, y + h - r);
-      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-      ctx.lineTo(x + r, y + h);
-      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-      ctx.lineTo(x, y + r);
-      ctx.quadraticCurveTo(x, y, x + r, y);
-      ctx.closePath();
-    }
+  const isNewBest = score > 0 && score >= best;
 
-    function lerpColor(a, b, t) {
-      const ah = parseInt(a.slice(1), 16);
-      const bh = parseInt(b.slice(1), 16);
-      const ar = (ah >> 16) & 0xff, ag = (ah >> 8) & 0xff, ab = ah & 0xff;
-      const br = (bh >> 16) & 0xff, bg = (bh >> 8) & 0xff, bb = bh & 0xff;
-      const rr = Math.round(ar + (br - ar) * t);
-      const rg = Math.round(ag + (bg - ag) * t);
-      const rb = Math.round(ab + (bb - ab) * t);
-      return `rgb(${rr},${rg},${rb})`;
-    }
+  ctx.fillStyle = '#f87171';
+  ctx.font      = `bold ${Math.min(54, W * 0.12)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText('GAME OVER', W / 2, H * 0.36);
 
-    function gameOver() {
-      cancelAnimationFrame(animId);
-      state = 'over';
-      flashGameOver();
-      msgEl.innerHTML = `Game Over! Score: <strong>${score}</strong> &mdash; Space to restart`;
-    }
+  ctx.fillStyle = '#ffffff';
+  ctx.font      = `bold ${Math.min(42, W * 0.1)}px monospace`;
+  ctx.fillText(score + 'm', W / 2, H * 0.50);
 
-    function flashGameOver() {
-      let count = 0;
-      const id = setInterval(() => {
-        ctx.fillStyle = `rgba(248,113,113,${0.15})`;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        if (++count > 4) clearInterval(id);
-      }, 80);
-    }
+  if (isNewBest) {
+    ctx.fillStyle = '#fbbf24';
+    ctx.font      = `bold ${Math.min(20, W * 0.05)}px monospace`;
+    ctx.fillText('NEW BEST!', W / 2, H * 0.60);
+  }
 
-    function startGame() {
-      if (animId) cancelAnimationFrame(animId);
-      init();
-      state = 'running';
-      msgEl.innerHTML = '';
-      animId = requestAnimationFrame(update);
-    }
+  ctx.fillStyle = '#aaaaaa';
+  ctx.font      = `${Math.min(22, W * 0.055)}px monospace`;
+  ctx.fillText('TAP TO RETRY', W / 2, isNewBest ? H * 0.71 : H * 0.63);
+}
 
-    function handleKey(e) {
-      if (state !== 'running' && (e.code === 'Space' || e.key === ' ')) {
-        startGame(); return;
-      }
-      if (e.code === 'Space' && state === 'running') {
-        togglePause(); return;
-      }
-      const map = {
-        ArrowUp: { x: 0, y: -1 }, w: { x: 0, y: -1 }, W: { x: 0, y: -1 },
-        ArrowDown: { x: 0, y: 1 }, s: { x: 0, y: 1 }, S: { x: 0, y: 1 },
-        ArrowLeft: { x: -1, y: 0 }, a: { x: -1, y: 0 }, A: { x: -1, y: 0 },
-        ArrowRight: { x: 1, y: 0 }, d: { x: 1, y: 0 }, D: { x: 1, y: 0 },
-      };
-      const nd = map[e.key];
-      if (nd && !(nd.x === -dir.x && nd.y === -dir.y)) {
-        nextDir = nd;
-        e.preventDefault();
-      }
-    }
+// ── Utility ───────────────────────────────────────────────────────────────────
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
 
-    function togglePause() {
-      if (state === 'running') {
-        cancelAnimationFrame(animId);
-        state = 'paused';
-        msgEl.innerHTML = 'Paused &mdash; Space to resume';
-      } else if (state === 'paused') {
-        state = 'running';
-        msgEl.innerHTML = '';
-        lastTime = 0;
-        animId = requestAnimationFrame(update);
-      }
-    }
-
-    // Touch / swipe support
-    let touchStart = null;
-    canvas.addEventListener('touchstart', e => {
-      touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    }, { passive: true });
-    canvas.addEventListener('touchend', e => {
-      if (!touchStart) return;
-      if (state !== 'running') { startGame(); return; }
-      const dx = e.changedTouches[0].clientX - touchStart.x;
-      const dy = e.changedTouches[0].clientY - touchStart.y;
-      if (Math.abs(dx) > Math.abs(dy)) {
-        const nd = dx > 0 ? { x: 1, y: 0 } : { x: -1, y: 0 };
-        if (!(nd.x === -dir.x)) nextDir = nd;
-      } else {
-        const nd = dy > 0 ? { x: 0, y: 1 } : { x: 0, y: -1 };
-        if (!(nd.y === -dir.y)) nextDir = nd;
-      }
-      touchStart = null;
-    }, { passive: true });
-
-    document.addEventListener('keydown', handleKey);
-
-    // Initial draw
-    state = 'idle';
+// ── Input ────────────────────────────────────────────────────────────────────
+function press() {
+  holding = true;
+  if (state === 'cover' || state === 'dead') {
     init();
-    draw();
-  </script>
+    state    = 'playing';
+    lastTime = 0;
+    return;
+  }
+  if (state === 'playing' && player.onGround) {
+    player.vy       = JUMP_VY;
+    player.onGround = false;
+  }
+}
+function release() { holding = false; }
+
+C.addEventListener('pointerdown', e => { e.preventDefault(); press(); }, { passive: false });
+C.addEventListener('pointerup',     release);
+C.addEventListener('pointercancel', release);
+
+document.addEventListener('keydown', e => {
+  if (['Space', 'ArrowUp', 'KeyW'].includes(e.code)) { e.preventDefault(); press(); }
+});
+document.addEventListener('keyup', e => {
+  if (['Space', 'ArrowUp', 'KeyW'].includes(e.code)) release();
+});
+
+// ── Loop ─────────────────────────────────────────────────────────────────────
+function loop(ts) {
+  requestAnimationFrame(loop);
+  const dt = lastTime === 0 ? 0 : Math.min((ts - lastTime) / 1000, 0.05);
+  lastTime = ts;
+  if (state === 'playing') update(dt);
+  draw();
+}
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+state    = 'cover';
+lastTime = 0;
+requestAnimationFrame(loop);
+</script>
 </body>
 </html>
