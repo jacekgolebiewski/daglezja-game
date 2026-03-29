@@ -110,7 +110,7 @@ function init() {
   nextDialogueTrigger  = DIALOGUE_FIRST;
 
   const groundY     = H - B * 3;
-  const groundWidth = Math.ceil(W / B) * 3 + 4;  // 3 screens of safe ground
+  const groundWidth = Math.ceil(W / B) + 4;  // 1 screen of safe ground
 
   platforms.push({ wx: 0, y: groundY, wb: groundWidth });
   genX        = groundWidth * B;
