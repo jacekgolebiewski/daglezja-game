@@ -16,6 +16,13 @@
 const C = document.getElementById('c');
 const ctx = C.getContext('2d');
 
+// ── Characters (swap these out to customise — images/avatars to be added externally) ──
+const CHARACTERS = [
+  { name: 'Rex',    color: '#22c55e', moods: { default: '🦕', happy: '🥳', angry: '🦖' } },
+  { name: 'R0B0',   color: '#60a5fa', moods: { default: '🤖', happy: '🤩', angry: '💢' } },
+  { name: 'Merlin', color: '#c084fc', moods: { default: '🧙', happy: '✨', angry: '🤬' } },
+];
+
 // ── Constants ───────────────────────────────────────────────────────────────
 const B             = 40;    // block size px
 const GRAVITY       = 2400;  // px/s²
@@ -29,13 +36,17 @@ const SPEED_INT     = 5;     // seconds between speed bumps
 
 // ── Globals ─────────────────────────────────────────────────────────────────
 let W, H;
-let state;           // 'cover' | 'playing' | 'dead'
+let state;           // 'cover' | 'avatar_select' | 'playing' | 'dead'
 let player, cameraX, platforms;
 let speed, speedTimer, score, best;
 let holding, lastTime;
 let genX, genLastY, genLastRight;
+let playerCharIdx;   // index into CHARACTERS; set on avatar select
+let avatarHoverIdx;  // card the pointer is hovering over
 
-best = 0;
+best           = 0;
+playerCharIdx  = -1;
+avatarHoverIdx = -1;
 
 // ── Resize ───────────────────────────────────────────────────────────────────
 function resize() {
@@ -147,14 +158,15 @@ function draw() {
   ctx.fillStyle = '#0f0f1a';
   ctx.fillRect(0, 0, W, H);
 
-  if (state !== 'cover') {
+  if (state !== 'cover' && state !== 'avatar_select') {
     drawPlatforms();
     drawPlayer();
     drawHUD();
   }
 
-  if (state === 'cover') drawCover();
-  if (state === 'dead')  drawDead();
+  if (state === 'cover')         drawCover();
+  if (state === 'avatar_select') drawAvatarSelect();
+  if (state === 'dead')          drawDead();
 }
 
 function drawPlatforms() {
@@ -171,9 +183,10 @@ function drawPlatforms() {
 }
 
 function drawPlayer() {
-  const sx = player.wx - cameraX;
-  // Body
-  ctx.fillStyle = '#4ade80';
+  const sx   = player.wx - cameraX;
+  const char = playerCharIdx >= 0 ? CHARACTERS[playerCharIdx] : null;
+  // Body — use chosen character colour, fallback green
+  ctx.fillStyle = char ? char.color : '#4ade80';
   ctx.fillRect(sx, player.y, player.w, player.h);
   // Eyes (right-facing)
   ctx.fillStyle = '#0f0f1a';
@@ -235,7 +248,7 @@ function drawCover() {
   // Subtitle
   ctx.fillStyle = '#ffffff';
   ctx.font      = `bold ${Math.min(26, W * 0.065)}px monospace`;
-  ctx.fillText('TAP TO START', W / 2, H * 0.50);
+  ctx.fillText('TAP TO PLAY', W / 2, H * 0.50);
 
   ctx.fillStyle = '#555577';
   ctx.font      = `${Math.min(15, W * 0.038)}px monospace`;
@@ -245,6 +258,76 @@ function drawCover() {
     ctx.fillStyle = '#fbbf24';
     ctx.font      = `${Math.min(18, W * 0.045)}px monospace`;
     ctx.fillText('best  ' + best + 'm', W / 2, H * 0.69);
+  }
+}
+
+// Returns card layout constants (shared between draw & hit-test)
+function cardLayout() {
+  const cardW  = Math.min(130, (W - 80) / 3.4);
+  const cardH  = cardW * 1.55;
+  const gap    = Math.min(20, (W - cardW * 3 - 60) / 2);
+  const totalW = cardW * 3 + gap * 2;
+  const startX = (W - totalW) / 2;
+  const cardY  = H * 0.33;
+  return { cardW, cardH, gap, startX, cardY };
+}
+
+function getCardAtPoint(px, py) {
+  const { cardW, cardH, gap, startX, cardY } = cardLayout();
+  for (let i = 0; i < 3; i++) {
+    const cx = startX + i * (cardW + gap);
+    if (px >= cx && px <= cx + cardW && py >= cardY && py <= cardY + cardH) return i;
+  }
+  return -1;
+}
+
+function drawAvatarSelect() {
+  const { cardW, cardH, gap, startX, cardY } = cardLayout();
+
+  ctx.fillStyle = 'rgba(10,10,20,0.97)';
+  ctx.fillRect(0, 0, W, H);
+
+  // Title
+  ctx.fillStyle = '#ffffff';
+  ctx.font      = `bold ${Math.min(28, W * 0.068)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText('CHOOSE YOUR CHARACTER', W / 2, H * 0.17);
+
+  ctx.fillStyle = '#555577';
+  ctx.font      = `${Math.min(12, W * 0.032)}px monospace`;
+  ctx.fillText("your pick won't show up to bother you", W / 2, H * 0.24);
+
+  for (let i = 0; i < 3; i++) {
+    const ch      = CHARACTERS[i];
+    const cx      = startX + i * (cardW + gap);
+    const isHover = avatarHoverIdx === i;
+
+    // Card bg
+    ctx.fillStyle = isHover ? ch.color + '22' : 'rgba(255,255,255,0.04)';
+    roundRect(cx, cardY, cardW, cardH, 14);
+    ctx.fill();
+
+    // Card border
+    ctx.strokeStyle = isHover ? ch.color : 'rgba(255,255,255,0.12)';
+    ctx.lineWidth   = isHover ? 2.5 : 1.5;
+    roundRect(cx, cardY, cardW, cardH, 14);
+    ctx.stroke();
+
+    // Emoji
+    const emojiSz = Math.min(48, cardW * 0.52);
+    ctx.font      = `${emojiSz}px serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(ch.moods.default, cx + cardW / 2, cardY + cardH * 0.42);
+
+    // Name
+    ctx.fillStyle = isHover ? ch.color : '#cccccc';
+    ctx.font      = `bold ${Math.min(15, cardW * 0.155)}px monospace`;
+    ctx.fillText(ch.name, cx + cardW / 2, cardY + cardH * 0.68);
+
+    // Tap hint
+    ctx.fillStyle = isHover ? ch.color : '#33334a';
+    ctx.font      = `${Math.min(10, cardW * 0.11)}px monospace`;
+    ctx.fillText('TAP TO PLAY', cx + cardW / 2, cardY + cardH * 0.87);
   }
 }
 
@@ -290,14 +373,32 @@ function roundRect(x, y, w, h, r) {
 }
 
 // ── Input ────────────────────────────────────────────────────────────────────
-function press() {
+function press(px, py) {
   holding = true;
-  if (state === 'cover' || state === 'dead') {
+
+  if (state === 'cover') {
+    state = 'avatar_select';
+    return;
+  }
+
+  if (state === 'avatar_select') {
+    const idx = getCardAtPoint(px, py);
+    if (idx >= 0) {
+      playerCharIdx = idx;
+      init();
+      state    = 'playing';
+      lastTime = 0;
+    }
+    return;
+  }
+
+  if (state === 'dead') {
     init();
     state    = 'playing';
     lastTime = 0;
     return;
   }
+
   if (state === 'playing' && player.onGround) {
     player.vy       = JUMP_VY;
     player.onGround = false;
@@ -305,12 +406,13 @@ function press() {
 }
 function release() { holding = false; }
 
-C.addEventListener('pointerdown', e => { e.preventDefault(); press(); }, { passive: false });
+C.addEventListener('pointerdown', e => { e.preventDefault(); press(e.clientX, e.clientY); }, { passive: false });
+C.addEventListener('pointermove',  e => { if (state === 'avatar_select') avatarHoverIdx = getCardAtPoint(e.clientX, e.clientY); });
 C.addEventListener('pointerup',     release);
 C.addEventListener('pointercancel', release);
 
 document.addEventListener('keydown', e => {
-  if (['Space', 'ArrowUp', 'KeyW'].includes(e.code)) { e.preventDefault(); press(); }
+  if (['Space', 'ArrowUp', 'KeyW'].includes(e.code)) { e.preventDefault(); press(-1, -1); }
 });
 document.addEventListener('keyup', e => {
   if (['Space', 'ArrowUp', 'KeyW'].includes(e.code)) release();
