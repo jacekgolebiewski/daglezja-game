@@ -146,6 +146,31 @@ function genNext() {
   genX         = genLastRight;
 }
 
+// ── Choice path generation ────────────────────────────────────────────────────
+function generateChoicePaths() {
+  const forkX  = Math.max(genX, cameraX + Math.round(W * 1.5 / B) * B);
+  const count  = 5;
+  const pw     = 4;
+  const step   = (pw + 3) * B;
+  const upperY = H - B * 7;
+  const lowerY = H - B * 3;
+
+  // Bridge from current gen position to fork start
+  if (forkX > genLastRight) {
+    platforms.push({ wx: genLastRight, y: genLastY, wb: Math.ceil((forkX - genLastRight) / B) });
+  }
+
+  for (let i = 0; i < count; i++) {
+    const x = forkX + i * step;
+    platforms.push({ wx: x, y: upperY, wb: pw, choiceIdx: 0 });
+    platforms.push({ wx: x, y: lowerY, wb: pw, choiceIdx: 1 });
+  }
+
+  genLastRight = forkX + count * step;
+  genLastY     = lowerY;
+  genX         = genLastRight;
+}
+
 // ── Dialogue system ───────────────────────────────────────────────────────────
 function triggerDialogue() {
   // Pick one of the two characters that isn't the player
@@ -171,6 +196,7 @@ function triggerDialogue() {
     shakeTimer:     0,     // drives sin oscillation
     stars:          [],    // confetti particles on correct answer
   };
+  generateChoicePaths();
   dlgBtns = [];
   state   = 'dialogue';
 }
@@ -226,6 +252,7 @@ function updateDialogue(dt) {
   } else if (dlg.phase === 'leaving') {
     dlg.panelY += (H + 20 - dlg.panelY) * Math.min(1, dt * 12);
     if (dlg.panelY >= H + 10) {
+      platforms = platforms.filter(p => p.choiceIdx === undefined);
       state = 'playing';
       dlg   = null;
     }
@@ -295,6 +322,19 @@ function update(dt) {
     }
   }
 
+  // Choice-platform landing → auto-answer
+  if (dlg && player.onGround && (dlg.phase === 'entering' || dlg.phase === 'typing' || dlg.phase === 'choices')) {
+    for (const p of platforms) {
+      if (p.choiceIdx === undefined) continue;
+      if (player.wx + player.w <= p.wx || player.wx >= p.wx + p.wb * B) continue;
+      if (Math.abs(player.y + player.h - p.y) < 4) {
+        if (dlg.phase !== 'choices') { dlg.typeIdx = dlg.question.text.length; dlg.phase = 'choices'; }
+        answerDialogue(p.choiceIdx);
+        break;
+      }
+    }
+  }
+
   // Score = blocks traveled
   score = Math.floor(cameraX / B);
   if (score > best) best = score;
@@ -345,14 +385,31 @@ function draw() {
 }
 
 function drawPlatforms() {
-  ctx.strokeStyle = '#888888';
-  ctx.lineWidth   = 2;
   for (const p of platforms) {
-    const sx = p.wx - cameraX;
+    const sx       = p.wx - cameraX;
+    const isChoice = p.choiceIdx !== undefined;
+    const color    = isChoice ? (p.choiceIdx === 0 ? '#4ade80' : '#60a5fa') : null;
+
+    ctx.strokeStyle = color || '#888888';
+    ctx.lineWidth   = isChoice ? 2.5 : 2;
+
     for (let i = 0; i < p.wb; i++) {
       const bx = sx + i * B;
       if (bx + B < -B || bx > W + B) continue;
       ctx.strokeRect(bx + 1, p.y + 1, B - 2, B - 2);
+    }
+
+    // Answer label above choice platforms (only while question is active)
+    if (isChoice && dlg && dlg.question) {
+      const platLeft  = sx;
+      const platRight = sx + p.wb * B;
+      if (platRight > 0 && platLeft < W) {
+        const labelX = (Math.max(platLeft, 0) + Math.min(platRight, W)) / 2;
+        ctx.fillStyle  = color;
+        ctx.font       = `bold ${Math.min(12, W * 0.03)}px monospace`;
+        ctx.textAlign  = 'center';
+        ctx.fillText(dlg.question.answers[p.choiceIdx] || '', labelX, p.y - 10);
+      }
     }
   }
 }
@@ -592,27 +649,26 @@ function drawDialogue() {
   ctx.textAlign  = 'center';
   wrapText(speechText, W / 2, bubbleTop + 24, bubbleW - 28, Math.min(20, W * 0.05));
 
-  // ── Answer buttons ──
+  // ── Answer indicator (reacting phase only) ──
   dlgBtns = [];
-  if (dlg.phase === 'choices' || dlg.phase === 'reacting') {
+  if (dlg.phase === 'choices') {
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.font      = `${Math.min(12, W * 0.03)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText('▲ jump  →  choose a path', W / 2, btnTop + btnH / 2 + 5);
+  } else if (dlg.phase === 'reacting') {
     const totalBW = Math.min(W - 48, 480);
     const btnW    = (totalBW - 12) / 2;
     const b0x     = (W - totalBW) / 2;
     const b1x     = b0x + btnW + 12;
 
     for (let i = 0; i < 2; i++) {
-      const bx  = i === 0 ? b0x : b1x;
-      let bg, border, text;
-
-      if (dlg.phase === 'reacting') {
-        const isCorrect = i === q.correct;
-        const isPicked  = i === dlg.selectedAnswer;
-        bg     = isPicked ? (isCorrect ? '#0a3d1e' : '#3d0a0a') : 'rgba(255,255,255,0.04)';
-        border = isCorrect ? '#4ade80' : '#f87171';
-        text   = isCorrect ? '#4ade80' : '#f87171';
-      } else {
-        bg = 'rgba(255,255,255,0.07)'; border = 'rgba(255,255,255,0.22)'; text = '#ffffff';
-      }
+      const bx        = i === 0 ? b0x : b1x;
+      const isCorrect = i === q.correct;
+      const isPicked  = i === dlg.selectedAnswer;
+      const bg     = isPicked ? (isCorrect ? '#0a3d1e' : '#3d0a0a') : 'rgba(255,255,255,0.04)';
+      const border = isCorrect ? '#4ade80' : '#f87171';
+      const text   = isCorrect ? '#4ade80' : '#f87171';
 
       ctx.fillStyle   = bg;
       roundRect(bx, btnTop, btnW, btnH, 9);
@@ -622,18 +678,15 @@ function drawDialogue() {
       roundRect(bx, btnTop, btnW, btnH, 9);
       ctx.stroke();
 
-      // Truncate label to fit
       ctx.font = `bold ${Math.min(13, W * 0.034)}px monospace`;
       let label = q.answers[i];
       while (ctx.measureText(label).width > btnW - 20 && label.length > 3)
         label = label.slice(0, -1);
       if (label !== q.answers[i]) label += '…';
 
-      ctx.fillStyle  = text;
-      ctx.textAlign  = 'center';
+      ctx.fillStyle = text;
+      ctx.textAlign = 'center';
       ctx.fillText(label, bx + btnW / 2, btnTop + btnH / 2 + 5);
-
-      if (dlg.phase === 'choices') dlgBtns.push({ x: bx, y: btnTop, w: btnW, h: btnH, idx: i });
     }
   }
 }
@@ -700,21 +753,12 @@ function press(px, py) {
   }
 
   if (state === 'dialogue') {
+    // Fast-forward typewriter
     if (dlg.phase === 'typing') {
-      // Skip typewriter — jump to choices immediately
       dlg.typeIdx = dlg.question.text.length;
       dlg.phase   = 'choices';
-      return;
     }
-    if (dlg.phase === 'choices') {
-      for (const btn of dlgBtns) {
-        if (px >= btn.x && px <= btn.x + btn.w && py >= btn.y && py <= btn.y + btn.h) {
-          answerDialogue(btn.idx);
-          return;
-        }
-      }
-    }
-    return;
+    // Fall through to allow jumping
   }
 
   if (state === 'dead') {
@@ -724,7 +768,7 @@ function press(px, py) {
     return;
   }
 
-  if (state === 'playing' && player.onGround) {
+  if ((state === 'playing' || state === 'dialogue') && player.onGround) {
     player.vy       = JUMP_VY;
     player.onGround = false;
   }
