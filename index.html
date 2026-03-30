@@ -24,9 +24,9 @@ const VERSION = 'v0.1.2';
 
 // imgs / _imgData populated at runtime from localStorage or Google Drive
 const CHARACTERS = [
-  { name: 'Rex',    color: '#22c55e', moods: { default: '🦕', happy: '🥳', angry: '🦖', sad: '😢' }, imgs: {}, _imgData: {} },
-  { name: 'R0B0',   color: '#60a5fa', moods: { default: '🤖', happy: '🤩', angry: '💢', sad: '🔋' }, imgs: {}, _imgData: {} },
-  { name: 'Merlin', color: '#c084fc', moods: { default: '🧙', happy: '✨', angry: '🤬', sad: '😔' }, imgs: {}, _imgData: {} },
+  { name: 'Rex',    color: '#22c55e', moods: { default: '🦕', happy: '🥳', angry: '🦖', sad: '😢' }, imgs: {}, _imgData: {}, interactions: [] },
+  { name: 'R0B0',   color: '#60a5fa', moods: { default: '🤖', happy: '🤩', angry: '💢', sad: '🔋' }, imgs: {}, _imgData: {}, interactions: [] },
+  { name: 'Merlin', color: '#c084fc', moods: { default: '🧙', happy: '✨', angry: '🤬', sad: '😔' }, imgs: {}, _imgData: {}, interactions: [] },
 ];
 
 // ── Funny questions ───────────────────────────────────────────────────────────
@@ -191,10 +191,26 @@ function generateChoicePaths() {
 
 // ── Dialogue system ───────────────────────────────────────────────────────────
 function triggerDialogue() {
-  const pool     = CHARACTERS.map((_, i) => i).filter(i => i !== playerCharIdx);
+  const pool    = CHARACTERS.map((_, i) => i).filter(i => i !== playerCharIdx);
   if (!pool.length) return;
-  const charIdx  = pool[Math.floor(Math.random() * pool.length)];
-  const question = QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)];
+  const charIdx = pool[Math.floor(Math.random() * pool.length)];
+  const ch      = CHARACTERS[charIdx];
+
+  let question;
+  if (ch.interactions && ch.interactions.length > 0) {
+    const iact  = ch.interactions[Math.floor(Math.random() * ch.interactions.length)];
+    // Randomise which platform (upper=0 / lower=1) holds the correct answer
+    const flip  = Math.random() < 0.5;
+    question = {
+      text:      iact.text,
+      answers:   flip ? [iact.correct, iact.wrong] : [iact.wrong, iact.correct],
+      correct:   flip ? 0 : 1,
+      happyLine: iact.correct,
+      wrongLine: iact.wrong,
+    };
+  } else {
+    question = QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)];
+  }
 
   dlg = {
     phase:          'typing',
@@ -722,11 +738,12 @@ function loadCharactersFromStorage() {
     CHARACTERS.length = 0;
     stored.forEach(s => {
       const ch = {
-        name:     s.name  || 'Character',
-        color:    s.color || '#888888',
-        moods:    s.moods || { default: '⭐', happy: '🥳', angry: '😤', sad: '😢' },
-        imgs:     {},
-        _imgData: {}
+        name:         s.name  || 'Character',
+        color:        s.color || '#888888',
+        moods:        s.moods || { default: '⭐', happy: '🥳', angry: '😤', sad: '😢' },
+        imgs:         {},
+        _imgData:     {},
+        interactions: Array.isArray(s.interactions) ? s.interactions : [],
       };
       ['default','happy','angry','sad'].forEach(mood => {
         if (s.images && s.images[mood]) {

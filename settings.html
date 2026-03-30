@@ -149,6 +149,56 @@
     }
     .btn-drive:hover { border-color: #007aff; color: #007aff; }
 
+    /* ── Interactions ── */
+    .iact-list { margin-bottom: 8px; }
+    .iact-empty { font-size: 13px; color: #8e8e93; margin-bottom: 12px; }
+    .iact-item {
+      background: #fff; border-radius: 10px; padding: 10px 12px;
+      margin-bottom: 8px; display: flex; align-items: flex-start; gap: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .iact-item-text { flex: 1; min-width: 0; }
+    .iact-q { font-size: 14px; font-weight: 600; color: #1c1c1e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .iact-responses { font-size: 12px; color: #8e8e93; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .iact-btns { display: flex; gap: 4px; flex-shrink: 0; }
+    .btn-iact-edit, .btn-iact-del {
+      background: none; border: 1px solid #d1d1d6; border-radius: 6px;
+      padding: 4px 8px; font-size: 12px; cursor: pointer; font-family: inherit;
+    }
+    .btn-iact-edit:hover { border-color: #007aff; color: #007aff; }
+    .btn-iact-del:hover  { border-color: #ff3b30; color: #ff3b30; }
+    .iact-form {
+      background: #fff; border-radius: 12px; padding: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 12px;
+    }
+    .iact-form input {
+      width: 100%; padding: 9px 11px; margin-bottom: 8px;
+      border: 1.5px solid #d1d1d6; border-radius: 8px;
+      font-size: 14px; font-family: inherit; background: #f9f9f9;
+    }
+    .iact-form input:focus { outline: none; border-color: #007aff; background: #fff; }
+    .iact-form-btns { display: flex; gap: 8px; margin-top: 2px; }
+    .btn-iact-save {
+      background: #007aff; color: #fff; border: none;
+      border-radius: 8px; padding: 9px 18px; font-size: 14px;
+      font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+    .btn-iact-save:hover { background: #0066d6; }
+    .btn-iact-cancel {
+      background: none; border: 1.5px solid #d1d1d6; border-radius: 8px;
+      padding: 9px 18px; font-size: 14px; cursor: pointer; font-family: inherit;
+    }
+    .btn-iact-cancel:hover { border-color: #8e8e93; }
+    .btn-add-interaction {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      width: 100%; padding: 11px; border-radius: 10px;
+      background: #fff; border: 1.5px dashed #d1d1d6;
+      font-size: 14px; font-weight: 600; color: #007aff;
+      cursor: pointer; font-family: inherit; margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .btn-add-interaction:hover { border-color: #007aff; background: #f0f7ff; }
+
     /* ── Crop modal ── */
     #crop-modal {
       display: none;
@@ -232,6 +282,10 @@
     <input type="text" id="char-edit-name" class="char-edit-name" placeholder="Character name" maxlength="24" autocomplete="off" />
     <p class="s-section-label">Mood Images <span style="font-weight:400;text-transform:none;font-size:12px;color:#8e8e93">· tap a mood to upload &amp; crop</span></p>
     <div class="mood-grid" id="mood-grid"></div>
+    <p class="s-section-label" style="margin-top:4px">Interactions <span style="font-weight:400;text-transform:none;font-size:12px;color:#8e8e93">· questions asked in game</span></p>
+    <div id="interactions-list" class="iact-list"></div>
+    <div id="interaction-form"></div>
+    <button type="button" class="btn-add-interaction" id="btn-add-interaction">+ Add Interaction</button>
     <button class="btn-primary" id="char-save-btn">Save</button>
     <button class="btn-delete-char" id="char-delete-btn" style="display:none">Delete Character</button>
   </div>
@@ -254,9 +308,9 @@ const VERSION = 'v0.1.2';
 // ── Characters ────────────────────────────────────────────────────────────────
 // Default characters — overridden by localStorage if present
 const CHARACTERS = [
-  { name: 'Rex',    color: '#22c55e', moods: { default: '🦕', happy: '🥳', angry: '🦖', sad: '😢' }, imgs: {}, _imgData: {} },
-  { name: 'R0B0',   color: '#60a5fa', moods: { default: '🤖', happy: '🤩', angry: '💢', sad: '🔋' }, imgs: {}, _imgData: {} },
-  { name: 'Merlin', color: '#c084fc', moods: { default: '🧙', happy: '✨', angry: '🤬', sad: '😔' }, imgs: {}, _imgData: {} },
+  { name: 'Rex',    color: '#22c55e', moods: { default: '🦕', happy: '🥳', angry: '🦖', sad: '😢' }, imgs: {}, _imgData: {}, interactions: [] },
+  { name: 'R0B0',   color: '#60a5fa', moods: { default: '🤖', happy: '🤩', angry: '💢', sad: '🔋' }, imgs: {}, _imgData: {}, interactions: [] },
+  { name: 'Merlin', color: '#c084fc', moods: { default: '🧙', happy: '✨', angry: '🤬', sad: '😔' }, imgs: {}, _imgData: {}, interactions: [] },
 ];
 
 // ── Firebase config ───────────────────────────────────────────────────────────
@@ -284,11 +338,12 @@ function loadCharactersFromStorage() {
     CHARACTERS.length = 0;
     stored.forEach(s => {
       const ch = {
-        name:     s.name  || 'Character',
-        color:    s.color || '#888888',
-        moods:    s.moods || { default: '⭐', happy: '🥳', angry: '😤', sad: '😢' },
-        imgs:     {},
-        _imgData: {}
+        name:         s.name  || 'Character',
+        color:        s.color || '#888888',
+        moods:        s.moods || { default: '⭐', happy: '🥳', angry: '😤', sad: '😢' },
+        imgs:         {},
+        _imgData:     {},
+        interactions: Array.isArray(s.interactions) ? s.interactions : [],
       };
       ['default','happy','angry','sad'].forEach(mood => {
         if (s.images && s.images[mood]) {
@@ -305,10 +360,11 @@ function loadCharactersFromStorage() {
 
 function saveCharactersToStorage() {
   const data = CHARACTERS.map(ch => ({
-    name:   ch.name,
-    color:  ch.color,
-    moods:  ch.moods,
-    images: ch._imgData,
+    name:         ch.name,
+    color:        ch.color,
+    moods:        ch.moods,
+    images:       ch._imgData,
+    interactions: ch.interactions || [],
   }));
   localStorage.setItem(CHAR_STORAGE_KEY, JSON.stringify(data));
 }
@@ -420,6 +476,8 @@ function openCharEditor(idx) {
   document.getElementById('char-edit-name').value          = ch.name;
   document.getElementById('char-delete-btn').style.display = CHARACTERS.length > 1 ? 'block' : 'none';
   renderMoodGrid(ch);
+  closeIactForm();
+  renderInteractionsList();
   showView('view-char-edit');
 }
 
@@ -734,6 +792,165 @@ function renderSyncSection() {
   document.getElementById('sync-save-btn').addEventListener('click', firebaseSaveAll);
   document.getElementById('sync-load-btn').addEventListener('click', firebaseLoadAll);
 }
+
+// ── Interaction CRUD ──────────────────────────────────────────────────────────
+let iactEditIdx = -1;
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function renderInteractionsList() {
+  const ch   = CHARACTERS[charEditIdx];
+  const list = document.getElementById('interactions-list');
+  list.innerHTML = '';
+
+  if (!ch.interactions || ch.interactions.length === 0) {
+    const p = document.createElement('p');
+    p.className   = 'iact-empty';
+    p.textContent = 'No interactions yet — add one below.';
+    list.appendChild(p);
+    return;
+  }
+
+  ch.interactions.forEach((iact, i) => {
+    const item = document.createElement('div');
+    item.className = 'iact-item';
+
+    const textWrap = document.createElement('div');
+    textWrap.className = 'iact-item-text';
+
+    const q = document.createElement('div');
+    q.className   = 'iact-q';
+    q.textContent = iact.text;
+
+    const resp = document.createElement('div');
+    resp.className   = 'iact-responses';
+    resp.textContent = `✓ ${iact.correct}   ✗ ${iact.wrong}`;
+
+    textWrap.appendChild(q);
+    textWrap.appendChild(resp);
+
+    const btns = document.createElement('div');
+    btns.className = 'iact-btns';
+
+    const editBtn = document.createElement('button');
+    editBtn.className   = 'btn-iact-edit';
+    editBtn.textContent = 'Edit';
+    editBtn.addEventListener('click', () => openIactForm(i));
+
+    const delBtn = document.createElement('button');
+    delBtn.className   = 'btn-iact-del';
+    delBtn.textContent = '✕';
+    delBtn.addEventListener('click', () => deleteIact(i));
+
+    btns.appendChild(editBtn);
+    btns.appendChild(delBtn);
+    item.appendChild(textWrap);
+    item.appendChild(btns);
+    list.appendChild(item);
+  });
+}
+
+function openIactForm(idx) {
+  iactEditIdx = idx;
+  const ch   = CHARACTERS[charEditIdx];
+  const iact = idx >= 0 ? ch.interactions[idx] : { text: '', correct: '', wrong: '' };
+
+  const formWrap = document.getElementById('interaction-form');
+  formWrap.innerHTML = '';
+
+  const card = document.createElement('div');
+  card.className = 'iact-form';
+
+  const txtInput = document.createElement('input');
+  txtInput.type        = 'text';
+  txtInput.id          = 'iact-text';
+  txtInput.placeholder = 'Question text';
+  txtInput.maxLength   = 120;
+  txtInput.value       = iact.text;
+
+  const okInput = document.createElement('input');
+  okInput.type        = 'text';
+  okInput.id          = 'iact-correct';
+  okInput.placeholder = 'Correct response';
+  okInput.maxLength   = 80;
+  okInput.value       = iact.correct;
+
+  const badInput = document.createElement('input');
+  badInput.type        = 'text';
+  badInput.id          = 'iact-wrong';
+  badInput.placeholder = 'Wrong response';
+  badInput.maxLength   = 80;
+  badInput.value       = iact.wrong;
+
+  const btnRow = document.createElement('div');
+  btnRow.className = 'iact-form-btns';
+
+  const saveBtn = document.createElement('button');
+  saveBtn.type      = 'button';
+  saveBtn.className = 'btn-iact-save';
+  saveBtn.textContent = idx >= 0 ? 'Update' : 'Add';
+  saveBtn.addEventListener('click', saveIact);
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type      = 'button';
+  cancelBtn.className = 'btn-iact-cancel';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.addEventListener('click', closeIactForm);
+
+  btnRow.appendChild(saveBtn);
+  btnRow.appendChild(cancelBtn);
+  card.appendChild(txtInput);
+  card.appendChild(okInput);
+  card.appendChild(badInput);
+  card.appendChild(btnRow);
+  formWrap.appendChild(card);
+
+  document.getElementById('btn-add-interaction').style.display = 'none';
+  txtInput.focus();
+}
+
+function closeIactForm() {
+  const formWrap = document.getElementById('interaction-form');
+  if (formWrap) formWrap.innerHTML = '';
+  const addBtn = document.getElementById('btn-add-interaction');
+  if (addBtn) addBtn.style.display = '';
+  iactEditIdx = -1;
+}
+
+function saveIact() {
+  const text    = (document.getElementById('iact-text')?.value    || '').trim();
+  const correct = (document.getElementById('iact-correct')?.value || '').trim();
+  const wrong   = (document.getElementById('iact-wrong')?.value   || '').trim();
+  if (!text || !correct || !wrong) return;
+
+  const ch = CHARACTERS[charEditIdx];
+  if (!ch.interactions) ch.interactions = [];
+
+  if (iactEditIdx >= 0) {
+    ch.interactions[iactEditIdx] = { text, correct, wrong };
+  } else {
+    ch.interactions.push({ text, correct, wrong });
+  }
+
+  saveCharactersToStorage();
+  closeIactForm();
+  renderInteractionsList();
+}
+
+function deleteIact(idx) {
+  const ch = CHARACTERS[charEditIdx];
+  ch.interactions.splice(idx, 1);
+  saveCharactersToStorage();
+  renderInteractionsList();
+}
+
+document.getElementById('btn-add-interaction').addEventListener('click', () => openIactForm(-1));
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 loadCharactersFromStorage();
