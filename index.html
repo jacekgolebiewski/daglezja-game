@@ -9,227 +9,11 @@
     body { background: #0a0a0f; overflow: hidden; touch-action: none; user-select: none; }
     canvas { display: block; position: absolute; top: 0; left: 0; transform-origin: 0 0; }
 
-    /* ── Settings overlay ───────────────────────────────────────────────── */
-    #settings-overlay {
-      display: none;
-      position: fixed; inset: 0;
-      z-index: 100;
-      background: #f2f2f7;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-      color: #1c1c1e;
-      overflow-y: auto;
-      touch-action: auto;
-      user-select: auto;
-    }
-    .s-nav {
-      position: sticky; top: 0;
-      background: rgba(242,242,247,0.92);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-bottom: 1px solid #d1d1d6;
-      display: flex; align-items: center;
-      padding: 14px 16px;
-      gap: 8px;
-    }
-    .s-back {
-      background: none; border: none;
-      color: #007aff; font-size: 17px;
-      cursor: pointer; padding: 4px 0;
-      min-width: 60px;
-    }
-    .s-nav-title {
-      flex: 1; text-align: center;
-      font-size: 17px; font-weight: 600;
-    }
-    .s-spacer { min-width: 60px; }
-    .s-body { padding: 28px 16px 40px; }
-    .s-section-label {
-      font-size: 13px; font-weight: 500;
-      color: #6c6c80; letter-spacing: 0.03em;
-      text-transform: uppercase;
-      margin: 0 4px 8px;
-    }
-    .s-card {
-      background: #fff;
-      border-radius: 12px;
-      overflow: hidden;
-      margin-bottom: 28px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    }
-    .s-row {
-      display: flex; align-items: center;
-      justify-content: space-between;
-      padding: 13px 16px;
-      border-bottom: 1px solid #e5e5ea;
-    }
-    .s-row:last-child { border-bottom: none; }
-    .s-key { font-size: 16px; }
-    .s-val { font-size: 16px; color: #8e8e93; }
-    .s-row-tappable { cursor: pointer; }
-    .s-row-tappable:hover { background: #f5f5fa; }
-
-    /* ── Character Manager overlay ───────────────────────────────────────────── */
-    #char-overlay {
-      display: none;
-      position: fixed; inset: 0;
-      z-index: 200;
-      background: #f2f2f7;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-      color: #1c1c1e;
-      overflow-y: auto;
-      touch-action: auto;
-      user-select: auto;
-    }
-    .char-avatar-wrap {
-      width: 44px; height: 44px; border-radius: 8px;
-      background: #f0f0f5; overflow: hidden;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; font-size: 28px;
-    }
-    .char-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; }
-    .char-info { flex: 1; min-width: 0; }
-    .char-name  { font-size: 16px; font-weight: 600; }
-    .char-sub   { font-size: 13px; color: #8e8e93; margin-top: 2px; }
-    .char-arrow { color: #c7c7cc; font-size: 20px; font-weight: 300; }
-
-    /* Character editor */
-    .char-edit-wrap { padding: 20px 16px 48px; }
-    .char-edit-name {
-      width: 100%; padding: 12px 14px;
-      border: 1.5px solid #d1d1d6; border-radius: 10px;
-      font-size: 16px; font-family: inherit;
-      margin-bottom: 24px; background: #fff;
-    }
-    .char-edit-name:focus { outline: none; border-color: #007aff; }
-    .mood-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
-    .mood-cell {
-      background: #fff; border-radius: 12px; padding: 14px 10px;
-      text-align: center; cursor: pointer;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-      border: 2px dashed #d1d1d6; transition: border-color 0.15s;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .mood-cell:hover  { border-color: #007aff; }
-    .mood-cell.has-img { border-style: solid; border-color: #34c759; }
-    .mood-cell img   { width: 72px; height: 72px; border-radius: 8px; object-fit: cover; display: block; margin: 0 auto 8px; }
-    .mood-emoji      { font-size: 44px; line-height: 72px; display: block; }
-    .mood-label      { font-size: 13px; font-weight: 600; color: #1c1c1e; }
-    .mood-hint       { font-size: 11px; color: #8e8e93; margin-top: 2px; }
-    .btn-primary {
-      background: #007aff; color: #fff; border: none;
-      border-radius: 10px; padding: 14px 24px;
-      font-size: 16px; font-weight: 600; cursor: pointer;
-      width: 100%; margin-bottom: 12px; font-family: inherit;
-    }
-    .btn-primary:hover { background: #0066d6; }
-
-    /* Drive sync */
-    .drive-card {
-      background: #fff; border-radius: 12px; margin: 0 16px 20px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow: hidden;
-    }
-    .drive-row { display: flex; align-items: center; gap: 10px; padding: 13px 16px; border-bottom: 1px solid #e5e5ea; }
-    .drive-row:last-child { border-bottom: none; }
-    .drive-status { flex: 1; font-size: 14px; color: #8e8e93; }
-    .btn-drive {
-      background: none; border: 1.5px solid #d1d1d6; border-radius: 8px;
-      padding: 6px 12px; font-size: 13px; cursor: pointer; font-family: inherit;
-      white-space: nowrap;
-    }
-    .btn-drive:hover { border-color: #007aff; color: #007aff; }
-
-    /* Crop modal */
-    #crop-modal {
-      display: none;
-      position: fixed; inset: 0; z-index: 300;
-      background: rgba(0,0,0,0.88);
-      flex-direction: column; align-items: center; justify-content: center;
-      touch-action: none; gap: 16px;
-    }
-    #crop-modal.open { display: flex; }
-    #crop-canvas {
-      border: 3px solid #007aff; border-radius: 10px;
-      cursor: grab; touch-action: none; display: block;
-      max-width: 90vw; max-height: 55vh;
-    }
-    #crop-canvas:active { cursor: grabbing; }
-    .crop-btns { display: flex; gap: 14px; }
-    .btn-crop-ok {
-      background: #007aff; color: #fff; border: none;
-      border-radius: 10px; padding: 13px 30px; font-size: 16px; font-weight: 600;
-      cursor: pointer; font-family: inherit;
-    }
-    .btn-crop-cancel {
-      background: rgba(255,255,255,0.15); color: #fff; border: none;
-      border-radius: 10px; padding: 13px 30px; font-size: 16px;
-      cursor: pointer; font-family: inherit;
-    }
-    .crop-hint { color: rgba(255,255,255,0.5); font-size: 12px; font-family: -apple-system, sans-serif; }
   </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 
-<div id="settings-overlay">
-  <div class="s-nav">
-    <button class="s-back" id="s-close">&#8592; Back</button>
-    <span class="s-nav-title">Settings</span>
-    <span class="s-spacer"></span>
-  </div>
-  <div class="s-body">
-    <p class="s-section-label">Customise</p>
-    <div class="s-card">
-      <div class="s-row s-row-tappable" id="s-characters">
-        <span class="s-key">Characters</span>
-        <span class="s-val">Manage ›</span>
-      </div>
-    </div>
-    <p class="s-section-label">About</p>
-    <div class="s-card">
-      <div class="s-row">
-        <span class="s-key">Game</span>
-        <span class="s-val">Block Runner</span>
-      </div>
-      <div class="s-row">
-        <span class="s-key">Version</span>
-        <span class="s-val" id="s-version"></span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ── Character Management overlay ──────────────────────────────────────── -->
-<div id="char-overlay">
-  <div class="s-nav">
-    <button class="s-back" id="char-back">&#8592; Back</button>
-    <span class="s-nav-title" id="char-title">Characters</span>
-    <span class="s-spacer"></span>
-  </div>
-  <div id="char-list-view">
-    <div id="char-drive-section"></div>
-    <div id="char-list-items"></div>
-  </div>
-  <div id="char-edit-view" style="display:none">
-    <div class="char-edit-wrap">
-      <p class="s-section-label">Name</p>
-      <input type="text" id="char-edit-name" class="char-edit-name" placeholder="Character name" maxlength="24" autocomplete="off" />
-      <p class="s-section-label">Mood Images <span style="font-weight:400;text-transform:none;font-size:12px;color:#8e8e93">· tap a mood to upload &amp; crop</span></p>
-      <div class="mood-grid" id="mood-grid"></div>
-      <button class="btn-primary" id="char-save-btn">Save</button>
-    </div>
-  </div>
-</div>
-
-<!-- ── Crop modal ──────────────────────────────────────────────────────────── -->
-<div id="crop-modal">
-  <canvas id="crop-canvas" width="280" height="280"></canvas>
-  <div class="crop-btns">
-    <button class="btn-crop-cancel" id="crop-cancel-btn">Cancel</button>
-    <button class="btn-crop-ok"     id="crop-ok-btn">Use This</button>
-  </div>
-  <p class="crop-hint">Drag to reposition · scroll / pinch to zoom</p>
-</div>
-<input type="file" id="img-file-input" accept="image/*" style="display:none" />
 
 <script>
 const C = document.getElementById('c');
@@ -283,9 +67,7 @@ let dlg;                  // active dialogue state object (null when idle)
 let dlgBtns;              // [{x,y,w,h,idx}] hit areas, rebuilt each draw frame
 let nextDialogueTrigger;  // score at which next dialogue fires
 let screenShake;          // pixels of camera shake; decays each frame
-let cogBtn;               // settings/cog button hit area {x,y,w,h}
-let resumeBtn;            // resume button hit area in pause screen
-let pausedFromState;      // state to restore on resume
+let settingsBtn;          // settings link hit area on cover screen {x,y,w,h}
 let playerMoodKey;        // 'default' | 'happy' | 'angry' — current player mood
 let playerMoodTimer;      // seconds remaining for current mood flash
 
@@ -297,9 +79,7 @@ avatarHoverIdx      = -1;
 dlg                 = null;
 dlgBtns             = [];
 screenShake         = 0;
-cogBtn              = null;
-resumeBtn           = null;
-pausedFromState     = 'playing';
+settingsBtn         = null;
 
 // ── Resize / orientation ─────────────────────────────────────────────────────
 function resize() {
@@ -411,7 +191,8 @@ function generateChoicePaths() {
 
 // ── Dialogue system ───────────────────────────────────────────────────────────
 function triggerDialogue() {
-  const pool     = [0, 1, 2].filter(i => i !== playerCharIdx);
+  const pool     = CHARACTERS.map((_, i) => i).filter(i => i !== playerCharIdx);
+  if (!pool.length) return;
   const charIdx  = pool[Math.floor(Math.random() * pool.length)];
   const question = QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)];
 
@@ -603,7 +384,6 @@ function draw() {
   if (state === 'avatar_select') drawAvatarSelect();
   if (state === 'dead')          drawDead();
   if (state === 'dialogue')      drawDialogue();
-  if (state === 'paused')        drawPaused();
 }
 
 function drawPlatforms() {
@@ -681,9 +461,9 @@ function drawHUD() {
   ctx.textAlign = 'right';
   ctx.fillText(score + 'm', W - 16, 37);
 
-  // Speed bar (top left, below cog)
+  // Speed bar (top left)
   const pct = (speed - SPEED_START) / (SPEED_MAX - SPEED_START);
-  const barW = 100, barH = 6, bx = 8, by = 50;
+  const barW = 100, barH = 6, bx = 8, by = 14;
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
   ctx.fillRect(bx - 2, by - 2, barW + 4, barH + 4);
   ctx.fillStyle = pct > 0.7 ? '#f87171' : pct > 0.35 ? '#fbbf24' : '#4ade80';
@@ -695,17 +475,6 @@ function drawHUD() {
   ctx.font       = '10px monospace';
   ctx.textAlign  = 'left';
   ctx.fillText('SPEED', bx, by - 4);
-
-  // Cog / settings button (top-left)
-  const cbSz = 34, cbX = 8, cbY = 8;
-  cogBtn = { x: cbX, y: cbY, w: cbSz, h: cbSz };
-  ctx.fillStyle = 'rgba(0,0,0,0.45)';
-  roundRect(cbX, cbY, cbSz, cbSz, 8);
-  ctx.fill();
-  ctx.font      = `${Math.round(cbSz * 0.56)}px serif`;
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#666688';
-  ctx.fillText('⚙', cbX + cbSz / 2, cbY + cbSz * 0.74);
 }
 
 function drawCover() {
@@ -747,47 +516,58 @@ function drawCover() {
     ctx.fillText('best  ' + best + 'm', W / 2, H * 0.69);
   }
 
-  // Version
+  // Version (bottom right)
   ctx.fillStyle = '#33334a';
   ctx.font      = `${Math.min(11, W * 0.028)}px monospace`;
   ctx.textAlign = 'right';
   ctx.fillText(VERSION, W - 12, H - 10);
 
-  // Cog button (same position as HUD)
-  const cbSz = 34, cbX = 8, cbY = 8;
-  cogBtn = { x: cbX, y: cbY, w: cbSz, h: cbSz };
-  ctx.fillStyle = 'rgba(0,0,0,0.45)';
-  roundRect(cbX, cbY, cbSz, cbSz, 8);
-  ctx.fill();
-  ctx.font      = `${Math.round(cbSz * 0.56)}px serif`;
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#666688';
-  ctx.fillText('⚙', cbX + cbSz / 2, cbY + cbSz * 0.74);
+  // Settings link (bottom left)
+  const sLinkTxt = '⚙ Settings';
+  const sLinkSz  = Math.min(13, W * 0.033);
+  ctx.font       = `${sLinkSz}px monospace`;
+  ctx.textAlign  = 'left';
+  ctx.fillStyle  = '#444466';
+  ctx.fillText(sLinkTxt, 12, H - 10);
+  const sLinkW   = ctx.measureText(sLinkTxt).width;
+  settingsBtn    = { x: 8, y: H - sLinkSz - 18, w: sLinkW + 8, h: sLinkSz + 14 };
 }
 
 // Returns card layout constants (shared between draw & hit-test)
 function cardLayout() {
-  const cardW  = Math.min(130, (W - 80) / 3.4);
-  const cardH  = cardW * 1.55;
-  const gap    = Math.min(20, (W - cardW * 3 - 60) / 2);
-  const totalW = cardW * 3 + gap * 2;
-  const startX = (W - totalW) / 2;
-  const cardY  = H * 0.33;
-  return { cardW, cardH, gap, startX, cardY };
+  const n     = CHARACTERS.length;
+  const cols  = Math.min(3, n);
+  const rows  = Math.ceil(n / cols);
+  const cardW = Math.min(130, (W - 80) / (cols + 0.4));
+  const cardH = cardW * 1.55;
+  const gap   = Math.min(20, Math.max(8, (W - cardW * cols - 60) / Math.max(1, cols - 1)));
+  const rowGap = cardH * 0.12;
+  const totalH = rows * cardH + (rows - 1) * rowGap;
+  const cardY  = (H - totalH) / 2 - H * 0.04;
+  return { cardW, cardH, gap, cardY, cols, rows, rowGap };
+}
+
+function cardPosition(i) {
+  const { cardW, cardH, gap, cardY, cols, rows, rowGap } = cardLayout();
+  const row  = Math.floor(i / cols);
+  const col  = i % cols;
+  const n    = CHARACTERS.length;
+  // Center last row if it has fewer cards than cols
+  const rowCols = (row === rows - 1 && n % cols !== 0) ? n % cols : cols;
+  const cx = (W - (rowCols * cardW + Math.max(0, rowCols - 1) * gap)) / 2 + col * (cardW + gap);
+  const cy = cardY + row * (cardH + rowGap);
+  return { cx, cy, cardW, cardH };
 }
 
 function getCardAtPoint(px, py) {
-  const { cardW, cardH, gap, startX, cardY } = cardLayout();
-  for (let i = 0; i < 3; i++) {
-    const cx = startX + i * (cardW + gap);
-    if (px >= cx && px <= cx + cardW && py >= cardY && py <= cardY + cardH) return i;
+  for (let i = 0; i < CHARACTERS.length; i++) {
+    const { cx, cy, cardW, cardH } = cardPosition(i);
+    if (px >= cx && px <= cx + cardW && py >= cy && py <= cy + cardH) return i;
   }
   return -1;
 }
 
 function drawAvatarSelect() {
-  const { cardW, cardH, gap, startX, cardY } = cardLayout();
-
   ctx.fillStyle = 'rgba(10,10,20,0.97)';
   ctx.fillRect(0, 0, W, H);
 
@@ -795,26 +575,26 @@ function drawAvatarSelect() {
   ctx.fillStyle = '#ffffff';
   ctx.font      = `bold ${Math.min(28, W * 0.068)}px monospace`;
   ctx.textAlign = 'center';
-  ctx.fillText('CHOOSE YOUR CHARACTER', W / 2, H * 0.17);
+  ctx.fillText('CHOOSE YOUR CHARACTER', W / 2, H * 0.13);
 
   ctx.fillStyle = '#555577';
   ctx.font      = `${Math.min(12, W * 0.032)}px monospace`;
-  ctx.fillText("your pick won't show up to bother you", W / 2, H * 0.24);
+  ctx.fillText("your pick won't show up to bother you", W / 2, H * 0.20);
 
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < CHARACTERS.length; i++) {
     const ch      = CHARACTERS[i];
-    const cx      = startX + i * (cardW + gap);
+    const { cx, cy, cardW, cardH } = cardPosition(i);
     const isHover = avatarHoverIdx === i;
 
     // Card bg
     ctx.fillStyle = isHover ? ch.color + '22' : 'rgba(255,255,255,0.04)';
-    roundRect(cx, cardY, cardW, cardH, 14);
+    roundRect(cx, cy, cardW, cardH, 14);
     ctx.fill();
 
     // Card border
     ctx.strokeStyle = isHover ? ch.color : 'rgba(255,255,255,0.12)';
     ctx.lineWidth   = isHover ? 2.5 : 1.5;
-    roundRect(cx, cardY, cardW, cardH, 14);
+    roundRect(cx, cy, cardW, cardH, 14);
     ctx.stroke();
 
     // Avatar image or emoji
@@ -823,7 +603,7 @@ function drawAvatarSelect() {
     if (imgObj && imgObj.complete && imgObj.naturalWidth) {
       const isz = emojiSz * 1.3;
       const ix  = cx + cardW / 2 - isz / 2;
-      const iy  = cardY + cardH * 0.13;
+      const iy  = cy + cardH * 0.13;
       ctx.save();
       roundRect(ix, iy, isz, isz, 8);
       ctx.clip();
@@ -832,18 +612,18 @@ function drawAvatarSelect() {
     } else {
       ctx.font      = `${emojiSz}px serif`;
       ctx.textAlign = 'center';
-      ctx.fillText(ch.moods.default, cx + cardW / 2, cardY + cardH * 0.42);
+      ctx.fillText(ch.moods.default, cx + cardW / 2, cy + cardH * 0.42);
     }
 
     // Name
     ctx.fillStyle = isHover ? ch.color : '#cccccc';
     ctx.font      = `bold ${Math.min(15, cardW * 0.155)}px monospace`;
-    ctx.fillText(ch.name, cx + cardW / 2, cardY + cardH * 0.68);
+    ctx.fillText(ch.name, cx + cardW / 2, cy + cardH * 0.68);
 
     // Tap hint
     ctx.fillStyle = isHover ? ch.color : '#33334a';
     ctx.font      = `${Math.min(10, cardW * 0.11)}px monospace`;
-    ctx.fillText('TAP TO PLAY', cx + cardW / 2, cardY + cardH * 0.87);
+    ctx.fillText('TAP TO PLAY', cx + cardW / 2, cy + cardH * 0.87);
   }
 }
 
@@ -930,454 +710,35 @@ function drawDialogue() {
   dlgBtns = [];
 }
 
-function drawPaused() {
-  ctx.fillStyle = 'rgba(0,0,0,0.45)';
-  ctx.fillRect(0, 0, W, H);
-}
-
-// ── Settings overlay (HTML) ───────────────────────────────────────────────────
-const settingsOverlay = document.getElementById('settings-overlay');
-document.getElementById('s-close').addEventListener('click', closeSettings);
-document.getElementById('s-characters').addEventListener('click', openCharacterManager);
-
-function openSettings(fromState) {
-  pausedFromState = fromState;
-  state = 'paused';
-  document.getElementById('s-version').textContent = VERSION;
-  settingsOverlay.style.display = 'block';
-}
-function closeSettings() {
-  settingsOverlay.style.display = 'none';
-  state = pausedFromState;
-}
-
-// ── Character Manager ─────────────────────────────────────────────────────────
-// Fill in your Google OAuth client ID to enable Drive sync.
-// Setup: console.cloud.google.com → new project → enable Drive API →
-//        Credentials → OAuth web client → add your page URL as origin.
-// Firebase config — fill in from console.firebase.google.com
-// Project settings → Your apps → Web app → SDK setup
-const FIREBASE_CONFIG = {
-  apiKey:            'AIzaSyA2I0adFWW2FDNjCciyZc-_N81wiB94bMc',
-  authDomain:        'daglezja-game.firebaseapp.com',
-  projectId:         'daglezja-game',
-  storageBucket:     'daglezja-game.firebasestorage.app',
-  messagingSenderId: '426870914835',
-  appId:             '1:426870914835:web:ccd599428a906e63d264e6',
-};
-
 const CHAR_STORAGE_KEY = 'blockrunner_chars_v1';
-let charEditIdx  = -1;
-let cropCallback = null;
-let _fbStorage   = null;   // firebase.storage() handle
 
 // ── localStorage persistence ──────────────────────────────────────────────────
 function loadCharactersFromStorage() {
   try {
     const raw = localStorage.getItem(CHAR_STORAGE_KEY);
     if (!raw) return;
-    JSON.parse(raw).forEach((s, i) => {
-      if (!CHARACTERS[i]) return;
-      if (s.name)  CHARACTERS[i].name  = s.name;
-      if (s.color) CHARACTERS[i].color = s.color;
+    const stored = JSON.parse(raw);
+    if (!Array.isArray(stored) || stored.length === 0) return;
+    CHARACTERS.length = 0;
+    stored.forEach(s => {
+      const ch = {
+        name:     s.name  || 'Character',
+        color:    s.color || '#888888',
+        moods:    s.moods || { default: '⭐', happy: '🥳', angry: '😤', sad: '😢' },
+        imgs:     {},
+        _imgData: {}
+      };
       ['default','happy','angry','sad'].forEach(mood => {
         if (s.images && s.images[mood]) {
-          CHARACTERS[i]._imgData[mood] = s.images[mood];
+          ch._imgData[mood] = s.images[mood];
           const img = new Image();
           img.src = s.images[mood];
-          CHARACTERS[i].imgs[mood] = img;
+          ch.imgs[mood] = img;
         }
       });
+      CHARACTERS.push(ch);
     });
   } catch(e) { /* corrupt storage – ignore */ }
-}
-
-function saveCharactersToStorage() {
-  const data = CHARACTERS.map(ch => ({
-    name:   ch.name,
-    color:  ch.color,
-    images: ch._imgData,
-  }));
-  localStorage.setItem(CHAR_STORAGE_KEY, JSON.stringify(data));
-}
-
-// ── Character Manager UI ──────────────────────────────────────────────────────
-const charOverlay = document.getElementById('char-overlay');
-
-document.getElementById('char-back').addEventListener('click', () => {
-  if (document.getElementById('char-edit-view').style.display !== 'none') {
-    showCharList();
-  } else {
-    charOverlay.style.display = 'none';
-    settingsOverlay.style.display = 'block';
-  }
-});
-
-function openCharacterManager() {
-  settingsOverlay.style.display = 'none';
-  charOverlay.style.display     = 'block';
-  showCharList();
-}
-
-function showCharList() {
-  document.getElementById('char-list-view').style.display = 'block';
-  document.getElementById('char-edit-view').style.display = 'none';
-  document.getElementById('char-title').textContent = 'Characters';
-  renderSyncSection();
-  renderCharList();
-}
-
-function renderCharList() {
-  const container = document.getElementById('char-list-items');
-  container.innerHTML = '';
-
-  const section = document.createElement('div');
-  section.style.padding = '8px 16px 16px';
-
-  const label = document.createElement('p');
-  label.className   = 's-section-label';
-  label.textContent = 'Game Characters';
-  section.appendChild(label);
-
-  const card = document.createElement('div');
-  card.className = 's-card';
-
-  CHARACTERS.forEach((ch, i) => {
-    const row  = document.createElement('div');
-    row.className = 's-row s-row-tappable';
-
-    const avatarWrap = document.createElement('div');
-    avatarWrap.className = 'char-avatar-wrap';
-    if (ch.imgs.default && ch.imgs.default.complete && ch.imgs.default.naturalWidth) {
-      const img = document.createElement('img');
-      img.src = ch.imgs.default.src;
-      avatarWrap.appendChild(img);
-    } else {
-      avatarWrap.textContent = ch.moods.default;
-    }
-
-    const info = document.createElement('div');
-    info.className = 'char-info';
-    info.innerHTML = `<div class="char-name" style="color:${ch.color}">${ch.name}</div>`
-                   + `<div class="char-sub">${Object.keys(ch._imgData).length} / 4 moods customised</div>`;
-
-    const arrow = document.createElement('span');
-    arrow.className   = 'char-arrow';
-    arrow.textContent = '›';
-
-    row.appendChild(avatarWrap);
-    row.appendChild(info);
-    row.appendChild(arrow);
-    row.addEventListener('click', () => openCharEditor(i));
-    card.appendChild(row);
-  });
-
-  section.appendChild(card);
-  container.appendChild(section);
-}
-
-// ── Mood metadata ─────────────────────────────────────────────────────────────
-const MOOD_META = {
-  default: { label: 'Default', hint: 'Cover & dialogue' },
-  happy:   { label: 'Happy',   hint: 'Correct answer'   },
-  angry:   { label: 'Angry',   hint: 'Wrong answer'     },
-  sad:     { label: 'Sad',     hint: 'Game over'        },
-};
-
-function openCharEditor(idx) {
-  charEditIdx = idx;
-  const ch    = CHARACTERS[idx];
-  document.getElementById('char-list-view').style.display = 'none';
-  document.getElementById('char-edit-view').style.display = 'block';
-  document.getElementById('char-title').textContent = ch.name;
-  document.getElementById('char-edit-name').value   = ch.name;
-  renderMoodGrid(ch);
-}
-
-function renderMoodGrid(ch) {
-  const grid = document.getElementById('mood-grid');
-  grid.innerHTML = '';
-  ['default','happy','angry','sad'].forEach(mood => {
-    const hasImg = !!(ch.imgs[mood] && ch.imgs[mood].complete && ch.imgs[mood].naturalWidth);
-    const cell   = document.createElement('div');
-    cell.className = 'mood-cell' + (hasImg ? ' has-img' : '');
-
-    if (hasImg) {
-      cell.innerHTML = `<img src="${ch.imgs[mood].src}" alt="${mood}" />`
-                     + `<div class="mood-label">${MOOD_META[mood].label}</div>`
-                     + `<div class="mood-hint">Tap to change</div>`;
-    } else {
-      cell.innerHTML = `<span class="mood-emoji">${ch.moods[mood]}</span>`
-                     + `<div class="mood-label">${MOOD_META[mood].label}</div>`
-                     + `<div class="mood-hint">${MOOD_META[mood].hint} · tap to add</div>`;
-    }
-    cell.addEventListener('click', () => pickImage(mood));
-    grid.appendChild(cell);
-  });
-}
-
-document.getElementById('char-save-btn').addEventListener('click', () => {
-  const name = document.getElementById('char-edit-name').value.trim();
-  if (!name) return;
-  CHARACTERS[charEditIdx].name = name;
-  saveCharactersToStorage();
-  showCharList();
-});
-
-// ── Image picker → crop ───────────────────────────────────────────────────────
-let pendingMood = null;
-const fileInput = document.getElementById('img-file-input');
-
-function pickImage(mood) {
-  pendingMood  = mood;
-  fileInput.value = '';
-  fileInput.click();
-}
-
-fileInput.addEventListener('change', e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => openCropModal(ev.target.result, dataUrl => {
-    const ch = CHARACTERS[charEditIdx];
-    ch._imgData[pendingMood] = dataUrl;
-    const img = new Image();
-    img.onload = () => {
-      ch.imgs[pendingMood] = img;
-      saveCharactersToStorage();
-      renderMoodGrid(ch);
-      document.getElementById('char-title').textContent = ch.name;
-    };
-    img.src = dataUrl;
-  });
-  reader.readAsDataURL(file);
-});
-
-// ── Crop tool ─────────────────────────────────────────────────────────────────
-const cropModal  = document.getElementById('crop-modal');
-const cropCanvas = document.getElementById('crop-canvas');
-const cropCtx    = cropCanvas.getContext('2d');
-
-const cs = { img: null, ox: 0, oy: 0, scale: 1, size: 280,
-             dragging: false, dragSx: 0, dragSy: 0, dragOx: 0, dragOy: 0,
-             pinchDist: 0 };
-
-function openCropModal(src, cb) {
-  cropCallback = cb;
-  const srcImg = new Image();
-  srcImg.onload = () => {
-    cs.img  = srcImg;
-    const sz = Math.min(Math.floor(Math.min(window.innerWidth * 0.88, window.innerHeight * 0.52)), 320);
-    cs.size  = sz;
-    cropCanvas.width  = sz;
-    cropCanvas.height = sz;
-    // Scale image so its shorter side fills the square
-    const fill = Math.max(sz / srcImg.width, sz / srcImg.height);
-    cs.scale = fill;
-    cs.ox    = (sz - srcImg.width  * fill) / 2;
-    cs.oy    = (sz - srcImg.height * fill) / 2;
-    cropModal.classList.add('open');
-    drawCropPreview();
-  };
-  srcImg.src = src;
-}
-
-function drawCropPreview() {
-  cropCtx.clearRect(0, 0, cs.size, cs.size);
-  cropCtx.drawImage(cs.img, cs.ox, cs.oy, cs.img.width * cs.scale, cs.img.height * cs.scale);
-}
-
-function cropZoom(factor, pivotX, pivotY) {
-  const px = pivotX ?? cs.size / 2;
-  const py = pivotY ?? cs.size / 2;
-  cs.ox    = px + (cs.ox - px) * factor;
-  cs.oy    = py + (cs.oy - py) * factor;
-  cs.scale *= factor;
-  drawCropPreview();
-}
-
-// Pointer drag
-cropCanvas.addEventListener('pointerdown', e => {
-  cropCanvas.setPointerCapture(e.pointerId);
-  cs.dragging = true;
-  cs.dragSx   = e.clientX; cs.dragSy = e.clientY;
-  cs.dragOx   = cs.ox;     cs.dragOy = cs.oy;
-});
-cropCanvas.addEventListener('pointermove', e => {
-  if (!cs.dragging) return;
-  cs.ox = cs.dragOx + (e.clientX - cs.dragSx);
-  cs.oy = cs.dragOy + (e.clientY - cs.dragSy);
-  drawCropPreview();
-});
-cropCanvas.addEventListener('pointerup',     () => { cs.dragging = false; });
-cropCanvas.addEventListener('pointercancel', () => { cs.dragging = false; });
-
-// Mouse wheel zoom
-cropCanvas.addEventListener('wheel', e => {
-  e.preventDefault();
-  cropZoom(e.deltaY < 0 ? 1.1 : 0.9);
-}, { passive: false });
-
-// Touch pinch zoom
-let _lastPinchDist = 0;
-cropCanvas.addEventListener('touchstart', e => {
-  if (e.touches.length === 2) {
-    _lastPinchDist = Math.hypot(
-      e.touches[0].clientX - e.touches[1].clientX,
-      e.touches[0].clientY - e.touches[1].clientY
-    );
-    cs.dragging = false;
-  }
-}, { passive: true });
-cropCanvas.addEventListener('touchmove', e => {
-  if (e.touches.length !== 2) return;
-  const dist   = Math.hypot(
-    e.touches[0].clientX - e.touches[1].clientX,
-    e.touches[0].clientY - e.touches[1].clientY
-  );
-  if (_lastPinchDist > 0) cropZoom(dist / _lastPinchDist);
-  _lastPinchDist = dist;
-}, { passive: true });
-
-document.getElementById('crop-cancel-btn').addEventListener('click', () => {
-  cropModal.classList.remove('open');
-  cropCallback = null;
-});
-
-document.getElementById('crop-ok-btn').addEventListener('click', () => {
-  // Export at 128×128 JPEG — fits the game's block scale well
-  const out   = document.createElement('canvas');
-  out.width   = 128; out.height = 128;
-  const oc    = out.getContext('2d');
-  const ratio = 128 / cs.size;
-  oc.drawImage(cs.img,
-    cs.ox * ratio, cs.oy * ratio,
-    cs.img.width  * cs.scale * ratio,
-    cs.img.height * cs.scale * ratio
-  );
-  const dataUrl = out.toDataURL('image/jpeg', 0.88);
-  cropModal.classList.remove('open');
-  if (cropCallback) { cropCallback(dataUrl); cropCallback = null; }
-});
-
-// ── Firebase sync ─────────────────────────────────────────────────────────────
-// Storage layout:
-//   characters/char-{i}-{mood}.jpg   ← cropped 128×128 images
-//   characters/meta.json             ← names + storage paths
-//
-// Storage rules (Firebase console → Storage → Rules):
-//   match /characters/{file} {
-//     allow read, write: if true;
-//   }
-
-function loadScriptsSeq(urls, cb) {
-  if (!urls.length) { cb(); return; }
-  const s = document.createElement('script');
-  s.src    = urls[0];
-  s.onload = () => loadScriptsSeq(urls.slice(1), cb);
-  document.head.appendChild(s);
-}
-
-function initFirebase() {
-  if (!FIREBASE_CONFIG.apiKey) return;
-  const VER = '10.12.0';
-  loadScriptsSeq([
-    `https://www.gstatic.com/firebasejs/${VER}/firebase-app-compat.js`,
-    `https://www.gstatic.com/firebasejs/${VER}/firebase-storage-compat.js`,
-  ], () => {
-    _fbStorage = window.firebase.storage(window.firebase.initializeApp(FIREBASE_CONFIG));
-    firebaseLoadAll();   // auto-load shared characters on startup
-  });
-}
-
-function setSyncStatus(msg) {
-  const el = document.getElementById('sync-status-text');
-  if (el) el.textContent = msg;
-}
-
-async function firebaseSaveAll() {
-  setSyncStatus('Uploading…');
-  try {
-    const root = _fbStorage.ref('characters');
-    const meta = {};
-    for (let i = 0; i < CHARACTERS.length; i++) {
-      const ch = CHARACTERS[i];
-      meta[i]  = { name: ch.name, color: ch.color, paths: {} };
-      for (const mood of ['default','happy','angry','sad']) {
-        if (!ch._imgData[mood]) continue;
-        const b64  = ch._imgData[mood].split(',')[1];
-        const bin  = atob(b64);
-        const arr  = new Uint8Array(bin.length);
-        for (let j = 0; j < bin.length; j++) arr[j] = bin.charCodeAt(j);
-        const path = `char-${i}-${mood}.jpg`;
-        await root.child(path).put(arr.buffer, { contentType: 'image/jpeg' });
-        meta[i].paths[mood] = path;
-      }
-    }
-    const metaBlob = new Blob([JSON.stringify(meta)], { type: 'application/json' });
-    await root.child('meta.json').put(metaBlob, { contentType: 'application/json' });
-    setSyncStatus('✓ Saved to Firebase');
-  } catch(err) {
-    setSyncStatus('Upload failed — check console');
-    console.error(err);
-  }
-}
-
-async function firebaseLoadAll() {
-  setSyncStatus('Loading…');
-  try {
-    const metaUrl = await _fbStorage.ref('characters/meta.json').getDownloadURL();
-    const meta    = await fetch(metaUrl).then(r => r.json());
-    for (const [idx, charMeta] of Object.entries(meta)) {
-      const i = parseInt(idx);
-      if (!CHARACTERS[i]) continue;
-      if (charMeta.name)  CHARACTERS[i].name  = charMeta.name;
-      if (charMeta.color) CHARACTERS[i].color = charMeta.color;
-      for (const [mood, path] of Object.entries(charMeta.paths || {})) {
-        const url = await _fbStorage.ref(`characters/${path}`).getDownloadURL();
-        const blob = await fetch(url).then(r => r.blob());
-        await new Promise(res => {
-          const fr = new FileReader();
-          fr.onload = ev => {
-            const dataUrl = ev.target.result;
-            CHARACTERS[i]._imgData[mood] = dataUrl;
-            const img = new Image();
-            img.onload = () => { CHARACTERS[i].imgs[mood] = img; res(); };
-            img.src = dataUrl;
-          };
-          fr.readAsDataURL(blob);
-        });
-      }
-    }
-    saveCharactersToStorage();
-    setSyncStatus('✓ Synced');
-    renderCharList();
-  } catch(err) {
-    // meta.json doesn't exist yet — that's fine on first use
-    setSyncStatus(err.code === 'storage/object-not-found' ? 'No data yet — save first' : 'Load failed');
-  }
-}
-
-function renderSyncSection() {
-  const wrap = document.getElementById('char-drive-section');
-  if (!FIREBASE_CONFIG.apiKey) { wrap.innerHTML = ''; return; }
-  wrap.innerHTML = `
-    <div style="padding:16px 16px 4px">
-      <p class="s-section-label">Cloud Sync</p>
-      <div class="drive-card">
-        <div class="drive-row">
-          <span class="drive-status" id="sync-status-text">
-            ${_fbStorage ? 'Ready' : 'Connecting…'}
-          </span>
-        </div>
-        <div class="drive-row">
-          <button class="btn-drive" style="flex:1" id="sync-save-btn">↑ Save for everyone</button>
-          <button class="btn-drive" style="flex:1" id="sync-load-btn">↓ Load latest</button>
-        </div>
-      </div>
-    </div>`;
-  document.getElementById('sync-save-btn').addEventListener('click', firebaseSaveAll);
-  document.getElementById('sync-load-btn').addEventListener('click', firebaseLoadAll);
 }
 
 function drawDead() {
@@ -1425,15 +786,13 @@ function roundRect(x, y, w, h, r) {
 function press(px, py) {
   holding = true;
 
-  // Cog button → settings overlay (cover, play, dialogue)
-  if ((state === 'cover' || state === 'playing' || state === 'dialogue') && cogBtn &&
-      px >= cogBtn.x && px <= cogBtn.x + cogBtn.w &&
-      py >= cogBtn.y && py <= cogBtn.y + cogBtn.h) {
-    openSettings(state);
+  // Settings link (cover screen only)
+  if (state === 'cover' && settingsBtn &&
+      px >= settingsBtn.x && px <= settingsBtn.x + settingsBtn.w &&
+      py >= settingsBtn.y && py <= settingsBtn.y + settingsBtn.h) {
+    window.location.href = 'settings.html';
     return;
   }
-
-  if (state === 'paused') return;
 
   if (state === 'cover') {
     state = 'avatar_select';
@@ -1483,11 +842,6 @@ C.addEventListener('pointerup',     release);
 C.addEventListener('pointercancel', release);
 
 document.addEventListener('keydown', e => {
-  if (e.code === 'Escape') {
-    if (state === 'playing' || state === 'dialogue') openSettings(state);
-    else if (state === 'paused') closeSettings();
-    return;
-  }
   if (['Space', 'ArrowUp', 'KeyW'].includes(e.code)) { e.preventDefault(); press(-1, -1); }
 });
 document.addEventListener('keyup', e => {
@@ -1501,14 +855,13 @@ function loop(ts) {
   lastTime = ts;
   if (state === 'playing' || state === 'dialogue') update(dt);
   if (state === 'dialogue') updateDialogue(dt);
-  if (state !== 'paused' && screenShake > 0.4) screenShake *= 1 - Math.min(1, dt * 8);
-  else if (state !== 'paused')                 screenShake = 0;
+  if (screenShake > 0.4) screenShake *= 1 - Math.min(1, dt * 8);
+  else                   screenShake = 0;
   draw();
 }
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
 loadCharactersFromStorage();
-initFirebase();
 state    = 'cover';
 lastTime = 0;
 requestAnimationFrame(loop);

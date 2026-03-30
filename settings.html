@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Settings — Block Runner</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #f2f2f7;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      color: #1c1c1e;
+      min-height: 100vh;
+    }
+
+    /* ── Views ── */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ── Nav bar ── */
+    .s-nav {
+      position: sticky; top: 0;
+      background: rgba(242,242,247,0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid #d1d1d6;
+      display: flex; align-items: center;
+      padding: 14px 16px;
+      gap: 8px;
+    }
+    .s-back {
+      background: none; border: none;
+      color: #007aff; font-size: 17px;
+      cursor: pointer; padding: 4px 0;
+      min-width: 60px;
+    }
+    .s-nav-title {
+      flex: 1; text-align: center;
+      font-size: 17px; font-weight: 600;
+    }
+    .s-spacer { min-width: 60px; }
+
+    /* ── Settings body ── */
+    .s-body { padding: 28px 16px 40px; }
+    .s-section-label {
+      font-size: 13px; font-weight: 500;
+      color: #6c6c80; letter-spacing: 0.03em;
+      text-transform: uppercase;
+      margin: 0 4px 8px;
+    }
+    .s-card {
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 28px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .s-row {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 13px 16px;
+      border-bottom: 1px solid #e5e5ea;
+    }
+    .s-row:last-child { border-bottom: none; }
+    .s-key { font-size: 16px; }
+    .s-val { font-size: 16px; color: #8e8e93; }
+    .s-row-tappable { cursor: pointer; }
+    .s-row-tappable:hover { background: #f5f5fa; }
+
+    /* ── Character list ── */
+    .char-avatar-wrap {
+      width: 44px; height: 44px; border-radius: 8px;
+      background: #f0f0f5; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: 28px;
+    }
+    .char-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; }
+    .char-info { flex: 1; min-width: 0; }
+    .char-name  { font-size: 16px; font-weight: 600; }
+    .char-sub   { font-size: 13px; color: #8e8e93; margin-top: 2px; }
+    .char-arrow { color: #c7c7cc; font-size: 20px; font-weight: 300; }
+    .char-row-delete {
+      background: none; border: none; color: #ff3b30; font-size: 20px;
+      cursor: pointer; padding: 4px 8px; line-height: 1;
+      flex-shrink: 0; border-radius: 6px;
+    }
+    .char-row-delete:hover { background: #fff1f0; }
+    .btn-add-char {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: calc(100% - 32px); margin: 0 16px 20px;
+      padding: 14px; border-radius: 12px;
+      background: #fff; border: 2px dashed #d1d1d6;
+      font-size: 15px; font-weight: 600; color: #007aff;
+      cursor: pointer; font-family: inherit;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .btn-add-char:hover { border-color: #007aff; background: #f0f7ff; }
+
+    /* ── Character editor ── */
+    .char-edit-wrap { padding: 20px 16px 48px; }
+    .char-edit-name {
+      width: 100%; padding: 12px 14px;
+      border: 1.5px solid #d1d1d6; border-radius: 10px;
+      font-size: 16px; font-family: inherit;
+      margin-bottom: 24px; background: #fff;
+    }
+    .char-edit-name:focus { outline: none; border-color: #007aff; }
+    .mood-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+    .mood-cell {
+      background: #fff; border-radius: 12px; padding: 14px 10px;
+      text-align: center; cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      border: 2px dashed #d1d1d6; transition: border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mood-cell:hover  { border-color: #007aff; }
+    .mood-cell.has-img { border-style: solid; border-color: #34c759; }
+    .mood-cell img   { width: 72px; height: 72px; border-radius: 8px; object-fit: cover; display: block; margin: 0 auto 8px; }
+    .mood-emoji      { font-size: 44px; line-height: 72px; display: block; }
+    .mood-label      { font-size: 13px; font-weight: 600; color: #1c1c1e; }
+    .mood-hint       { font-size: 11px; color: #8e8e93; margin-top: 2px; }
+    .btn-primary {
+      background: #007aff; color: #fff; border: none;
+      border-radius: 10px; padding: 14px 24px;
+      font-size: 16px; font-weight: 600; cursor: pointer;
+      width: 100%; margin-bottom: 12px; font-family: inherit;
+    }
+    .btn-primary:hover { background: #0066d6; }
+    .btn-delete-char {
+      background: none; border: 1.5px solid #ff3b30; border-radius: 10px;
+      padding: 14px 24px; font-size: 16px; font-weight: 600;
+      color: #ff3b30; cursor: pointer; width: 100%;
+      margin-bottom: 12px; font-family: inherit;
+    }
+    .btn-delete-char:hover { background: #fff1f0; }
+
+    /* ── Cloud sync ── */
+    .drive-card {
+      background: #fff; border-radius: 12px; margin: 0 16px 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow: hidden;
+    }
+    .drive-row { display: flex; align-items: center; gap: 10px; padding: 13px 16px; border-bottom: 1px solid #e5e5ea; }
+    .drive-row:last-child { border-bottom: none; }
+    .drive-status { flex: 1; font-size: 14px; color: #8e8e93; }
+    .btn-drive {
+      background: none; border: 1.5px solid #d1d1d6; border-radius: 8px;
+      padding: 6px 12px; font-size: 13px; cursor: pointer; font-family: inherit;
+      white-space: nowrap;
+    }
+    .btn-drive:hover { border-color: #007aff; color: #007aff; }
+
+    /* ── Crop modal ── */
+    #crop-modal {
+      display: none;
+      position: fixed; inset: 0; z-index: 300;
+      background: rgba(0,0,0,0.88);
+      flex-direction: column; align-items: center; justify-content: center;
+      touch-action: none; gap: 16px;
+    }
+    #crop-modal.open { display: flex; }
+    #crop-canvas {
+      border: 3px solid #007aff; border-radius: 10px;
+      cursor: grab; touch-action: none; display: block;
+      max-width: 90vw; max-height: 55vh;
+    }
+    #crop-canvas:active { cursor: grabbing; }
+    .crop-btns { display: flex; gap: 14px; }
+    .btn-crop-ok {
+      background: #007aff; color: #fff; border: none;
+      border-radius: 10px; padding: 13px 30px; font-size: 16px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    .btn-crop-cancel {
+      background: rgba(255,255,255,0.15); color: #fff; border: none;
+      border-radius: 10px; padding: 13px 30px; font-size: 16px;
+      cursor: pointer; font-family: inherit;
+    }
+    .crop-hint { color: rgba(255,255,255,0.5); font-size: 12px; }
+  </style>
+</head>
+<body>
+
+<!-- ── View: Settings ─────────────────────────────────────────────────────── -->
+<div id="view-settings" class="view active">
+  <div class="s-nav">
+    <button class="s-back" id="btn-back-to-game">&#8592; Game</button>
+    <span class="s-nav-title">Settings</span>
+    <span class="s-spacer"></span>
+  </div>
+  <div class="s-body">
+    <p class="s-section-label">Customise</p>
+    <div class="s-card">
+      <div class="s-row s-row-tappable" id="s-characters">
+        <span class="s-key">Characters</span>
+        <span class="s-val">Manage ›</span>
+      </div>
+    </div>
+    <p class="s-section-label">About</p>
+    <div class="s-card">
+      <div class="s-row">
+        <span class="s-key">Game</span>
+        <span class="s-val">Block Runner</span>
+      </div>
+      <div class="s-row">
+        <span class="s-key">Version</span>
+        <span class="s-val" id="s-version"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── View: Character List ───────────────────────────────────────────────── -->
+<div id="view-char-list" class="view">
+  <div class="s-nav">
+    <button class="s-back" id="btn-back-to-settings">&#8592; Settings</button>
+    <span class="s-nav-title">Characters</span>
+    <span class="s-spacer"></span>
+  </div>
+  <div id="char-drive-section"></div>
+  <div id="char-list-items"></div>
+</div>
+
+<!-- ── View: Character Editor ─────────────────────────────────────────────── -->
+<div id="view-char-edit" class="view">
+  <div class="s-nav">
+    <button class="s-back" id="btn-back-to-chars">&#8592; Characters</button>
+    <span class="s-nav-title" id="char-title">Character</span>
+    <span class="s-spacer"></span>
+  </div>
+  <div class="char-edit-wrap">
+    <p class="s-section-label">Name</p>
+    <input type="text" id="char-edit-name" class="char-edit-name" placeholder="Character name" maxlength="24" autocomplete="off" />
+    <p class="s-section-label">Mood Images <span style="font-weight:400;text-transform:none;font-size:12px;color:#8e8e93">· tap a mood to upload &amp; crop</span></p>
+    <div class="mood-grid" id="mood-grid"></div>
+    <button class="btn-primary" id="char-save-btn">Save</button>
+    <button class="btn-delete-char" id="char-delete-btn" style="display:none">Delete Character</button>
+  </div>
+</div>
+
+<!-- ── Crop modal ─────────────────────────────────────────────────────────── -->
+<div id="crop-modal">
+  <canvas id="crop-canvas" width="280" height="280"></canvas>
+  <div class="crop-btns">
+    <button class="btn-crop-cancel" id="crop-cancel-btn">Cancel</button>
+    <button class="btn-crop-ok"     id="crop-ok-btn">Use This</button>
+  </div>
+  <p class="crop-hint">Drag to reposition · scroll / pinch to zoom</p>
+</div>
+<input type="file" id="img-file-input" accept="image/*" style="display:none" />
+
+<script>
+const VERSION = 'v0.1.2';
+
+// ── Characters ────────────────────────────────────────────────────────────────
+// Default characters — overridden by localStorage if present
+const CHARACTERS = [
+  { name: 'Rex',    color: '#22c55e', moods: { default: '🦕', happy: '🥳', angry: '🦖', sad: '😢' }, imgs: {}, _imgData: {} },
+  { name: 'R0B0',   color: '#60a5fa', moods: { default: '🤖', happy: '🤩', angry: '💢', sad: '🔋' }, imgs: {}, _imgData: {} },
+  { name: 'Merlin', color: '#c084fc', moods: { default: '🧙', happy: '✨', angry: '🤬', sad: '😔' }, imgs: {}, _imgData: {} },
+];
+
+// ── Firebase config ───────────────────────────────────────────────────────────
+const FIREBASE_CONFIG = {
+  apiKey:            'AIzaSyA2I0adFWW2FDNjCciyZc-_N81wiB94bMc',
+  authDomain:        'daglezja-game.firebaseapp.com',
+  projectId:         'daglezja-game',
+  storageBucket:     'daglezja-game.firebasestorage.app',
+  messagingSenderId: '426870914835',
+  appId:             '1:426870914835:web:ccd599428a906e63d264e6',
+};
+
+const CHAR_STORAGE_KEY = 'blockrunner_chars_v1';
+let charEditIdx  = -1;
+let cropCallback = null;
+let _fbStorage   = null;
+
+// ── localStorage persistence ──────────────────────────────────────────────────
+function loadCharactersFromStorage() {
+  try {
+    const raw = localStorage.getItem(CHAR_STORAGE_KEY);
+    if (!raw) return;
+    const stored = JSON.parse(raw);
+    if (!Array.isArray(stored) || stored.length === 0) return;
+    CHARACTERS.length = 0;
+    stored.forEach(s => {
+      const ch = {
+        name:     s.name  || 'Character',
+        color:    s.color || '#888888',
+        moods:    s.moods || { default: '⭐', happy: '🥳', angry: '😤', sad: '😢' },
+        imgs:     {},
+        _imgData: {}
+      };
+      ['default','happy','angry','sad'].forEach(mood => {
+        if (s.images && s.images[mood]) {
+          ch._imgData[mood] = s.images[mood];
+          const img = new Image();
+          img.src = s.images[mood];
+          ch.imgs[mood] = img;
+        }
+      });
+      CHARACTERS.push(ch);
+    });
+  } catch(e) { /* corrupt storage – ignore */ }
+}
+
+function saveCharactersToStorage() {
+  const data = CHARACTERS.map(ch => ({
+    name:   ch.name,
+    color:  ch.color,
+    moods:  ch.moods,
+    images: ch._imgData,
+  }));
+  localStorage.setItem(CHAR_STORAGE_KEY, JSON.stringify(data));
+}
+
+// ── View navigation ───────────────────────────────────────────────────────────
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+document.getElementById('btn-back-to-game').addEventListener('click', () => {
+  window.location.href = 'index.html';
+});
+
+document.getElementById('btn-back-to-settings').addEventListener('click', () => {
+  showView('view-settings');
+});
+
+document.getElementById('btn-back-to-chars').addEventListener('click', () => {
+  showView('view-char-list');
+  renderCharList();
+});
+
+document.getElementById('s-characters').addEventListener('click', () => {
+  showView('view-char-list');
+  renderSyncSection();
+  renderCharList();
+});
+
+// ── Character list ────────────────────────────────────────────────────────────
+function renderCharList() {
+  const container = document.getElementById('char-list-items');
+  container.innerHTML = '';
+
+  const section = document.createElement('div');
+  section.style.padding = '8px 16px 16px';
+
+  const label = document.createElement('p');
+  label.className   = 's-section-label';
+  label.textContent = 'Game Characters';
+  section.appendChild(label);
+
+  const card = document.createElement('div');
+  card.className = 's-card';
+
+  CHARACTERS.forEach((ch, i) => {
+    const row = document.createElement('div');
+    row.className     = 's-row s-row-tappable';
+    row.style.cssText = 'gap:10px';
+
+    const avatarWrap = document.createElement('div');
+    avatarWrap.className = 'char-avatar-wrap';
+    if (ch.imgs.default && ch.imgs.default.complete && ch.imgs.default.naturalWidth) {
+      const img = document.createElement('img');
+      img.src = ch.imgs.default.src;
+      avatarWrap.appendChild(img);
+    } else {
+      avatarWrap.textContent = ch.moods.default;
+    }
+
+    const info = document.createElement('div');
+    info.className = 'char-info';
+    info.innerHTML = `<div class="char-name" style="color:${ch.color}">${ch.name}</div>`
+                   + `<div class="char-sub">${Object.keys(ch._imgData).length} / 4 moods customised</div>`;
+
+    const arrow = document.createElement('span');
+    arrow.className   = 'char-arrow';
+    arrow.textContent = '›';
+
+    row.appendChild(avatarWrap);
+    row.appendChild(info);
+
+    if (CHARACTERS.length > 1) {
+      const delBtn = document.createElement('button');
+      delBtn.className   = 'char-row-delete';
+      delBtn.textContent = '×';
+      delBtn.title       = 'Delete character';
+      delBtn.addEventListener('click', e => { e.stopPropagation(); removeCharacter(i); });
+      row.appendChild(delBtn);
+    }
+
+    row.appendChild(arrow);
+    row.addEventListener('click', () => openCharEditor(i));
+    card.appendChild(row);
+  });
+
+  section.appendChild(card);
+
+  const addBtn = document.createElement('button');
+  addBtn.className = 'btn-add-char';
+  addBtn.innerHTML = '<span style="font-size:20px;line-height:1">+</span> Add Character';
+  addBtn.addEventListener('click', addCharacter);
+  container.appendChild(section);
+  container.appendChild(addBtn);
+}
+
+// ── Character editor ──────────────────────────────────────────────────────────
+const MOOD_META = {
+  default: { label: 'Default', hint: 'Cover & dialogue' },
+  happy:   { label: 'Happy',   hint: 'Correct answer'   },
+  angry:   { label: 'Angry',   hint: 'Wrong answer'     },
+  sad:     { label: 'Sad',     hint: 'Game over'        },
+};
+
+function openCharEditor(idx) {
+  charEditIdx = idx;
+  const ch    = CHARACTERS[idx];
+  document.getElementById('char-title').textContent        = ch.name;
+  document.getElementById('char-edit-name').value          = ch.name;
+  document.getElementById('char-delete-btn').style.display = CHARACTERS.length > 1 ? 'block' : 'none';
+  renderMoodGrid(ch);
+  showView('view-char-edit');
+}
+
+function renderMoodGrid(ch) {
+  const grid = document.getElementById('mood-grid');
+  grid.innerHTML = '';
+  ['default','happy','angry','sad'].forEach(mood => {
+    const hasImg = !!(ch.imgs[mood] && ch.imgs[mood].complete && ch.imgs[mood].naturalWidth);
+    const cell   = document.createElement('div');
+    cell.className = 'mood-cell' + (hasImg ? ' has-img' : '');
+    if (hasImg) {
+      cell.innerHTML = `<img src="${ch.imgs[mood].src}" alt="${mood}" />`
+                     + `<div class="mood-label">${MOOD_META[mood].label}</div>`
+                     + `<div class="mood-hint">Tap to change</div>`;
+    } else {
+      cell.innerHTML = `<span class="mood-emoji">${ch.moods[mood]}</span>`
+                     + `<div class="mood-label">${MOOD_META[mood].label}</div>`
+                     + `<div class="mood-hint">${MOOD_META[mood].hint} · tap to add</div>`;
+    }
+    cell.addEventListener('click', () => pickImage(mood));
+    grid.appendChild(cell);
+  });
+}
+
+document.getElementById('char-save-btn').addEventListener('click', () => {
+  const name = document.getElementById('char-edit-name').value.trim();
+  if (!name) return;
+  CHARACTERS[charEditIdx].name = name;
+  saveCharactersToStorage();
+  showView('view-char-list');
+  renderCharList();
+});
+
+document.getElementById('char-delete-btn').addEventListener('click', () => {
+  removeCharacter(charEditIdx);
+});
+
+// ── Add / Remove characters ───────────────────────────────────────────────────
+const NEW_CHAR_PALETTE = [
+  { color: '#ff9500', moods: { default: '⭐', happy: '🌟', angry: '💥', sad: '😞' } },
+  { color: '#ff2d55', moods: { default: '🦊', happy: '🎉', angry: '🔥', sad: '💔' } },
+  { color: '#5856d6', moods: { default: '👾', happy: '🤩', angry: '😈', sad: '😔' } },
+  { color: '#34aadc', moods: { default: '🐬', happy: '🥰', angry: '😤', sad: '😢' } },
+  { color: '#4cd964', moods: { default: '🐸', happy: '😄', angry: '😠', sad: '😭' } },
+];
+
+function addCharacter() {
+  const template = NEW_CHAR_PALETTE[CHARACTERS.length % NEW_CHAR_PALETTE.length];
+  CHARACTERS.push({
+    name:     'New Character',
+    color:    template.color,
+    moods:    { ...template.moods },
+    imgs:     {},
+    _imgData: {}
+  });
+  saveCharactersToStorage();
+  openCharEditor(CHARACTERS.length - 1);
+}
+
+function removeCharacter(idx) {
+  if (CHARACTERS.length <= 1) return;
+  CHARACTERS.splice(idx, 1);
+  saveCharactersToStorage();
+  showView('view-char-list');
+  renderCharList();
+}
+
+// ── Image picker → crop ───────────────────────────────────────────────────────
+let pendingMood = null;
+const fileInput = document.getElementById('img-file-input');
+
+function pickImage(mood) {
+  pendingMood     = mood;
+  fileInput.value = '';
+  fileInput.click();
+}
+
+fileInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => openCropModal(ev.target.result, dataUrl => {
+    const ch = CHARACTERS[charEditIdx];
+    ch._imgData[pendingMood] = dataUrl;
+    const img = new Image();
+    img.onload = () => {
+      ch.imgs[pendingMood] = img;
+      saveCharactersToStorage();
+      renderMoodGrid(ch);
+      document.getElementById('char-title').textContent = ch.name;
+    };
+    img.src = dataUrl;
+  });
+  reader.readAsDataURL(file);
+});
+
+// ── Crop tool ─────────────────────────────────────────────────────────────────
+const cropModal  = document.getElementById('crop-modal');
+const cropCanvas = document.getElementById('crop-canvas');
+const cropCtx    = cropCanvas.getContext('2d');
+const cs = { img: null, ox: 0, oy: 0, scale: 1, size: 280,
+             dragging: false, dragSx: 0, dragSy: 0, dragOx: 0, dragOy: 0 };
+
+function openCropModal(src, cb) {
+  cropCallback = cb;
+  const srcImg = new Image();
+  srcImg.onload = () => {
+    cs.img  = srcImg;
+    const sz = Math.min(Math.floor(Math.min(window.innerWidth * 0.88, window.innerHeight * 0.52)), 320);
+    cs.size  = sz;
+    cropCanvas.width  = sz;
+    cropCanvas.height = sz;
+    const fill = Math.max(sz / srcImg.width, sz / srcImg.height);
+    cs.scale = fill;
+    cs.ox    = (sz - srcImg.width  * fill) / 2;
+    cs.oy    = (sz - srcImg.height * fill) / 2;
+    cropModal.classList.add('open');
+    drawCropPreview();
+  };
+  srcImg.src = src;
+}
+
+function drawCropPreview() {
+  cropCtx.clearRect(0, 0, cs.size, cs.size);
+  cropCtx.drawImage(cs.img, cs.ox, cs.oy, cs.img.width * cs.scale, cs.img.height * cs.scale);
+}
+
+function cropZoom(factor, pivotX, pivotY) {
+  const px = pivotX ?? cs.size / 2;
+  const py = pivotY ?? cs.size / 2;
+  cs.ox    = px + (cs.ox - px) * factor;
+  cs.oy    = py + (cs.oy - py) * factor;
+  cs.scale *= factor;
+  drawCropPreview();
+}
+
+cropCanvas.addEventListener('pointerdown', e => {
+  cropCanvas.setPointerCapture(e.pointerId);
+  cs.dragging = true;
+  cs.dragSx   = e.clientX; cs.dragSy = e.clientY;
+  cs.dragOx   = cs.ox;     cs.dragOy = cs.oy;
+});
+cropCanvas.addEventListener('pointermove', e => {
+  if (!cs.dragging) return;
+  cs.ox = cs.dragOx + (e.clientX - cs.dragSx);
+  cs.oy = cs.dragOy + (e.clientY - cs.dragSy);
+  drawCropPreview();
+});
+cropCanvas.addEventListener('pointerup',     () => { cs.dragging = false; });
+cropCanvas.addEventListener('pointercancel', () => { cs.dragging = false; });
+
+cropCanvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  cropZoom(e.deltaY < 0 ? 1.1 : 0.9);
+}, { passive: false });
+
+let _lastPinchDist = 0;
+cropCanvas.addEventListener('touchstart', e => {
+  if (e.touches.length === 2) {
+    _lastPinchDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    cs.dragging = false;
+  }
+}, { passive: true });
+cropCanvas.addEventListener('touchmove', e => {
+  if (e.touches.length !== 2) return;
+  const dist = Math.hypot(
+    e.touches[0].clientX - e.touches[1].clientX,
+    e.touches[0].clientY - e.touches[1].clientY
+  );
+  if (_lastPinchDist > 0) cropZoom(dist / _lastPinchDist);
+  _lastPinchDist = dist;
+}, { passive: true });
+
+document.getElementById('crop-cancel-btn').addEventListener('click', () => {
+  cropModal.classList.remove('open');
+  cropCallback = null;
+});
+
+document.getElementById('crop-ok-btn').addEventListener('click', () => {
+  const out   = document.createElement('canvas');
+  out.width   = 128; out.height = 128;
+  const oc    = out.getContext('2d');
+  const ratio = 128 / cs.size;
+  oc.drawImage(cs.img,
+    cs.ox * ratio, cs.oy * ratio,
+    cs.img.width  * cs.scale * ratio,
+    cs.img.height * cs.scale * ratio
+  );
+  const dataUrl = out.toDataURL('image/jpeg', 0.88);
+  cropModal.classList.remove('open');
+  if (cropCallback) { cropCallback(dataUrl); cropCallback = null; }
+});
+
+// ── Firebase sync ─────────────────────────────────────────────────────────────
+// Storage layout:
+//   characters/char-{i}-{mood}.jpg   ← cropped 128×128 images
+//   characters/meta.json             ← names + storage paths
+//
+// Storage rules (Firebase console → Storage → Rules):
+//   match /characters/{file} {
+//     allow read, write: if true;
+//   }
+
+function loadScriptsSeq(urls, cb) {
+  if (!urls.length) { cb(); return; }
+  const s = document.createElement('script');
+  s.src    = urls[0];
+  s.onload = () => loadScriptsSeq(urls.slice(1), cb);
+  document.head.appendChild(s);
+}
+
+function initFirebase() {
+  if (!FIREBASE_CONFIG.apiKey) return;
+  const VER = '10.12.0';
+  loadScriptsSeq([
+    `https://www.gstatic.com/firebasejs/${VER}/firebase-app-compat.js`,
+    `https://www.gstatic.com/firebasejs/${VER}/firebase-storage-compat.js`,
+  ], () => {
+    _fbStorage = window.firebase.storage(window.firebase.initializeApp(FIREBASE_CONFIG));
+    firebaseLoadAll();
+  });
+}
+
+function setSyncStatus(msg) {
+  const el = document.getElementById('sync-status-text');
+  if (el) el.textContent = msg;
+}
+
+async function firebaseSaveAll() {
+  setSyncStatus('Uploading…');
+  try {
+    const root = _fbStorage.ref('characters');
+    const meta = {};
+    for (let i = 0; i < CHARACTERS.length; i++) {
+      const ch = CHARACTERS[i];
+      meta[i]  = { name: ch.name, color: ch.color, paths: {} };
+      for (const mood of ['default','happy','angry','sad']) {
+        if (!ch._imgData[mood]) continue;
+        const b64  = ch._imgData[mood].split(',')[1];
+        const bin  = atob(b64);
+        const arr  = new Uint8Array(bin.length);
+        for (let j = 0; j < bin.length; j++) arr[j] = bin.charCodeAt(j);
+        const path = `char-${i}-${mood}.jpg`;
+        await root.child(path).put(arr.buffer, { contentType: 'image/jpeg' });
+        meta[i].paths[mood] = path;
+      }
+    }
+    const metaBlob = new Blob([JSON.stringify(meta)], { type: 'application/json' });
+    await root.child('meta.json').put(metaBlob, { contentType: 'application/json' });
+    setSyncStatus('✓ Saved to Firebase');
+  } catch(err) {
+    setSyncStatus('Upload failed — check console');
+    console.error(err);
+  }
+}
+
+async function firebaseLoadAll() {
+  setSyncStatus('Loading…');
+  try {
+    const metaUrl = await _fbStorage.ref('characters/meta.json').getDownloadURL();
+    const meta    = await fetch(metaUrl).then(r => r.json());
+    for (const [idx, charMeta] of Object.entries(meta)) {
+      const i = parseInt(idx);
+      if (!CHARACTERS[i]) continue;
+      if (charMeta.name)  CHARACTERS[i].name  = charMeta.name;
+      if (charMeta.color) CHARACTERS[i].color = charMeta.color;
+      for (const [mood, path] of Object.entries(charMeta.paths || {})) {
+        const url  = await _fbStorage.ref(`characters/${path}`).getDownloadURL();
+        const blob = await fetch(url).then(r => r.blob());
+        await new Promise(res => {
+          const fr = new FileReader();
+          fr.onload = ev => {
+            const dataUrl = ev.target.result;
+            CHARACTERS[i]._imgData[mood] = dataUrl;
+            const img = new Image();
+            img.onload = () => { CHARACTERS[i].imgs[mood] = img; res(); };
+            img.src = dataUrl;
+          };
+          fr.readAsDataURL(blob);
+        });
+      }
+    }
+    saveCharactersToStorage();
+    setSyncStatus('✓ Synced');
+    renderCharList();
+  } catch(err) {
+    setSyncStatus(err.code === 'storage/object-not-found' ? 'No data yet — save first' : 'Load failed');
+  }
+}
+
+function renderSyncSection() {
+  const wrap = document.getElementById('char-drive-section');
+  if (!FIREBASE_CONFIG.apiKey) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = `
+    <div style="padding:16px 16px 4px">
+      <p class="s-section-label">Cloud Sync</p>
+      <div class="drive-card">
+        <div class="drive-row">
+          <span class="drive-status" id="sync-status-text">
+            ${_fbStorage ? 'Ready' : 'Connecting…'}
+          </span>
+        </div>
+        <div class="drive-row">
+          <button class="btn-drive" style="flex:1" id="sync-save-btn">↑ Save for everyone</button>
+          <button class="btn-drive" style="flex:1" id="sync-load-btn">↓ Load latest</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('sync-save-btn').addEventListener('click', firebaseSaveAll);
+  document.getElementById('sync-load-btn').addEventListener('click', firebaseLoadAll);
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+loadCharactersFromStorage();
+initFirebase();
+document.getElementById('s-version').textContent = VERSION;
+</script>
+</body>
+</html>
