@@ -464,7 +464,7 @@ function updateDialogue(dt) {
     dlg.stars = dlg.stars.filter(s => s.life > 0);
 
     if (dlg.reactTimer >= 2.2) {
-      platforms = platforms.filter(p => p.choiceIdx === undefined);
+      platforms.forEach(p => { delete p.choiceIdx; });
       state = 'playing';
       dlg   = null;
     }
