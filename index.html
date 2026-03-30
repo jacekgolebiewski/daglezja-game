@@ -160,8 +160,8 @@ function genNext() {
 
 // ── Choice path generation ────────────────────────────────────────────────────
 function generateChoicePaths() {
-  // Place fork ~1 screen ahead so the player reaches it while dialogue is still open
-  const forkX = Math.round((cameraX + W * 1.2) / B) * B;
+  // Place fork far enough ahead so the player has time to read the dialogue
+  const forkX = Math.round((cameraX + W * 1.6) / B) * B;
 
   // Clear everything pre-generated at or beyond the fork
   platforms = platforms.filter(p => p.wx + p.wb * B <= forkX);
@@ -175,13 +175,15 @@ function generateChoicePaths() {
   const count  = 5;
   const pw     = 4;
   const step   = (pw + 3) * B;
-  const upperY = H - B * 7;
+  const upperY = H - B * 5;   // closer to ground so the jump is manageable
   const lowerY = H - B;
+  // Randomly swap which path (upper/lower) holds choice 0 vs 1 each time
+  const pathFlip = Math.random() < 0.5;
 
   for (let i = 0; i < count; i++) {
     const x = forkX + i * step;
-    platforms.push({ wx: x, y: upperY, wb: pw, choiceIdx: 0 });
-    platforms.push({ wx: x, y: lowerY, wb: pw, choiceIdx: 1 });
+    platforms.push({ wx: x, y: upperY, wb: pw, choiceIdx: pathFlip ? 1 : 0 });
+    platforms.push({ wx: x, y: lowerY, wb: pw, choiceIdx: pathFlip ? 0 : 1 });
   }
 
   genLastRight = forkX + count * step;
@@ -275,6 +277,7 @@ function answerDialogue(idx) {
   dlg.reactTimer     = 0;
 
   if (idx === dlg.question.correct) {
+    speed = Math.min(SPEED_MAX, speed + 40);
     // Happy: launch character upward
     dlg.charBounceV = -420;
     // Burst of confetti from the character area
@@ -292,6 +295,7 @@ function answerDialogue(idx) {
       });
     }
   } else {
+    speed = Math.max(SPEED_START, speed - 30);
     // Angry: screen shake + character rage-wobble
     screenShake = 18;
   }
@@ -308,15 +312,10 @@ function update(dt) {
     playerMoodTimer = 0.5;
   }
 
-  // Speed ramp
-  speedTimer += dt;
-  if (speedTimer >= SPEED_INT) {
-    speedTimer -= SPEED_INT;
-    speed = Math.min(SPEED_MAX, speed + SPEED_STEP);
-  }
-
   // Auto-scroll camera; player follows at fixed screen X
-  cameraX  += speed * dt;
+  // Slow scroll during dialogue so player has time to navigate the split path
+  const scrollSpeed = (state === 'dialogue') ? speed * 0.65 : speed;
+  cameraX  += scrollSpeed * dt;
   player.wx = cameraX + PLAYER_SCR_X;
 
   // Vertical physics
