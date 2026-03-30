@@ -341,7 +341,7 @@ function init() {
   screenShake          = 0;
   nextDialogueTrigger  = DIALOGUE_FIRST;
 
-  const groundY     = H - B * 2;
+  const groundY     = H - B;
   const groundWidth = Math.ceil(W / B) + 4;  // 1 screen of safe ground
 
   platforms.push({ wx: 0, y: groundY, wb: groundWidth });
@@ -351,10 +351,10 @@ function init() {
 
   player = {
     wx: cameraX + PLAYER_SCR_X,
-    y:  groundY - (B - 6),   // feet on ground
+    y:  groundY - B,       // feet on ground
     vy: 0,
-    w:  B - 6,
-    h:  B - 6,
+    w:  B,
+    h:  B,
     onGround: true,
   };
 
@@ -368,7 +368,7 @@ function genNext() {
   const widB = 4 + Math.floor(Math.random() * 4);           // width: 4–7 blocks
   const dyB  = Math.floor(Math.random() * 5) - 2;           // Δheight: –2..+2 blocks
   const minY = H - B * 8;
-  const maxY = H - B * 2;
+  const maxY = H - B;
   const newY = Math.max(minY, Math.min(maxY, genLastY + dyB * B));
   const startX = genLastRight + gapB * B;
 
@@ -389,14 +389,14 @@ function generateChoicePaths() {
   // Approach platform connecting current terrain to the fork
   const lastEnd = platforms.reduce((mx, p) => Math.max(mx, p.wx + p.wb * B), cameraX);
   if (forkX > lastEnd) {
-    platforms.push({ wx: lastEnd, y: H - B * 3, wb: Math.ceil((forkX - lastEnd) / B) });
+    platforms.push({ wx: lastEnd, y: H - B * 2, wb: Math.ceil((forkX - lastEnd) / B) });
   }
 
   const count  = 5;
   const pw     = 4;
   const step   = (pw + 3) * B;
   const upperY = H - B * 7;
-  const lowerY = H - B * 2;
+  const lowerY = H - B;
 
   for (let i = 0; i < count; i++) {
     const x = forkX + i * step;
@@ -681,9 +681,9 @@ function drawHUD() {
   ctx.textAlign = 'right';
   ctx.fillText(score + 'm', W - 16, 37);
 
-  // Speed bar (bottom left)
+  // Speed bar (top left, below cog)
   const pct = (speed - SPEED_START) / (SPEED_MAX - SPEED_START);
-  const barW = 120, barH = 8, bx = 16, by = H - 28;
+  const barW = 100, barH = 6, bx = 8, by = 50;
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
   ctx.fillRect(bx - 2, by - 2, barW + 4, barH + 4);
   ctx.fillStyle = pct > 0.7 ? '#f87171' : pct > 0.35 ? '#fbbf24' : '#4ade80';
@@ -692,9 +692,9 @@ function drawHUD() {
   ctx.lineWidth   = 1;
   ctx.strokeRect(bx, by, barW, barH);
   ctx.fillStyle  = '#666';
-  ctx.font       = '11px monospace';
+  ctx.font       = '10px monospace';
   ctx.textAlign  = 'left';
-  ctx.fillText('SPEED', bx, by - 6);
+  ctx.fillText('SPEED', bx, by - 4);
 
   // Cog / settings button (top-left)
   const cbSz = 34, cbX = 8, cbY = 8;
