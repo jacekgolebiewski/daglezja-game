@@ -137,6 +137,29 @@
       white-space: nowrap;
     }
     .btn-drive:hover { border-color: #007aff; color: #007aff; }
+    .btn-add-char {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: calc(100% - 32px); margin: 0 16px 20px;
+      padding: 14px; border-radius: 12px;
+      background: #fff; border: 2px dashed #d1d1d6;
+      font-size: 15px; font-weight: 600; color: #007aff;
+      cursor: pointer; font-family: inherit;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .btn-add-char:hover { border-color: #007aff; background: #f0f7ff; }
+    .btn-delete-char {
+      background: none; border: 1.5px solid #ff3b30; border-radius: 10px;
+      padding: 14px 24px; font-size: 16px; font-weight: 600;
+      color: #ff3b30; cursor: pointer; width: 100%;
+      margin-bottom: 12px; font-family: inherit;
+    }
+    .btn-delete-char:hover { background: #fff1f0; }
+    .char-row-delete {
+      background: none; border: none; color: #ff3b30; font-size: 20px;
+      cursor: pointer; padding: 4px 8px; line-height: 1;
+      flex-shrink: 0; border-radius: 6px;
+    }
+    .char-row-delete:hover { background: #fff1f0; }
 
     /* Crop modal */
     #crop-modal {
@@ -216,6 +239,7 @@
       <p class="s-section-label">Mood Images <span style="font-weight:400;text-transform:none;font-size:12px;color:#8e8e93">· tap a mood to upload &amp; crop</span></p>
       <div class="mood-grid" id="mood-grid"></div>
       <button class="btn-primary" id="char-save-btn">Save</button>
+      <button class="btn-delete-char" id="char-delete-btn" style="display:none">Delete Character</button>
     </div>
   </div>
 </div>
@@ -411,7 +435,8 @@ function generateChoicePaths() {
 
 // ── Dialogue system ───────────────────────────────────────────────────────────
 function triggerDialogue() {
-  const pool     = [0, 1, 2].filter(i => i !== playerCharIdx);
+  const pool     = CHARACTERS.map((_, i) => i).filter(i => i !== playerCharIdx);
+  if (!pool.length) return;
   const charIdx  = pool[Math.floor(Math.random() * pool.length)];
   const question = QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)];
 
@@ -767,27 +792,39 @@ function drawCover() {
 
 // Returns card layout constants (shared between draw & hit-test)
 function cardLayout() {
-  const cardW  = Math.min(130, (W - 80) / 3.4);
-  const cardH  = cardW * 1.55;
-  const gap    = Math.min(20, (W - cardW * 3 - 60) / 2);
-  const totalW = cardW * 3 + gap * 2;
-  const startX = (W - totalW) / 2;
-  const cardY  = H * 0.33;
-  return { cardW, cardH, gap, startX, cardY };
+  const n     = CHARACTERS.length;
+  const cols  = Math.min(3, n);
+  const rows  = Math.ceil(n / cols);
+  const cardW = Math.min(130, (W - 80) / (cols + 0.4));
+  const cardH = cardW * 1.55;
+  const gap   = Math.min(20, Math.max(8, (W - cardW * cols - 60) / Math.max(1, cols - 1)));
+  const rowGap = cardH * 0.12;
+  const totalH = rows * cardH + (rows - 1) * rowGap;
+  const cardY  = (H - totalH) / 2 - H * 0.04;
+  return { cardW, cardH, gap, cardY, cols, rows, rowGap };
+}
+
+function cardPosition(i) {
+  const { cardW, cardH, gap, cardY, cols, rows, rowGap } = cardLayout();
+  const row  = Math.floor(i / cols);
+  const col  = i % cols;
+  const n    = CHARACTERS.length;
+  // Center last row if it has fewer cards than cols
+  const rowCols = (row === rows - 1 && n % cols !== 0) ? n % cols : cols;
+  const cx = (W - (rowCols * cardW + Math.max(0, rowCols - 1) * gap)) / 2 + col * (cardW + gap);
+  const cy = cardY + row * (cardH + rowGap);
+  return { cx, cy, cardW, cardH };
 }
 
 function getCardAtPoint(px, py) {
-  const { cardW, cardH, gap, startX, cardY } = cardLayout();
-  for (let i = 0; i < 3; i++) {
-    const cx = startX + i * (cardW + gap);
-    if (px >= cx && px <= cx + cardW && py >= cardY && py <= cardY + cardH) return i;
+  for (let i = 0; i < CHARACTERS.length; i++) {
+    const { cx, cy, cardW, cardH } = cardPosition(i);
+    if (px >= cx && px <= cx + cardW && py >= cy && py <= cy + cardH) return i;
   }
   return -1;
 }
 
 function drawAvatarSelect() {
-  const { cardW, cardH, gap, startX, cardY } = cardLayout();
-
   ctx.fillStyle = 'rgba(10,10,20,0.97)';
   ctx.fillRect(0, 0, W, H);
 
@@ -795,26 +832,26 @@ function drawAvatarSelect() {
   ctx.fillStyle = '#ffffff';
   ctx.font      = `bold ${Math.min(28, W * 0.068)}px monospace`;
   ctx.textAlign = 'center';
-  ctx.fillText('CHOOSE YOUR CHARACTER', W / 2, H * 0.17);
+  ctx.fillText('CHOOSE YOUR CHARACTER', W / 2, H * 0.13);
 
   ctx.fillStyle = '#555577';
   ctx.font      = `${Math.min(12, W * 0.032)}px monospace`;
-  ctx.fillText("your pick won't show up to bother you", W / 2, H * 0.24);
+  ctx.fillText("your pick won't show up to bother you", W / 2, H * 0.20);
 
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < CHARACTERS.length; i++) {
     const ch      = CHARACTERS[i];
-    const cx      = startX + i * (cardW + gap);
+    const { cx, cy, cardW, cardH } = cardPosition(i);
     const isHover = avatarHoverIdx === i;
 
     // Card bg
     ctx.fillStyle = isHover ? ch.color + '22' : 'rgba(255,255,255,0.04)';
-    roundRect(cx, cardY, cardW, cardH, 14);
+    roundRect(cx, cy, cardW, cardH, 14);
     ctx.fill();
 
     // Card border
     ctx.strokeStyle = isHover ? ch.color : 'rgba(255,255,255,0.12)';
     ctx.lineWidth   = isHover ? 2.5 : 1.5;
-    roundRect(cx, cardY, cardW, cardH, 14);
+    roundRect(cx, cy, cardW, cardH, 14);
     ctx.stroke();
 
     // Avatar image or emoji
@@ -823,7 +860,7 @@ function drawAvatarSelect() {
     if (imgObj && imgObj.complete && imgObj.naturalWidth) {
       const isz = emojiSz * 1.3;
       const ix  = cx + cardW / 2 - isz / 2;
-      const iy  = cardY + cardH * 0.13;
+      const iy  = cy + cardH * 0.13;
       ctx.save();
       roundRect(ix, iy, isz, isz, 8);
       ctx.clip();
@@ -832,18 +869,18 @@ function drawAvatarSelect() {
     } else {
       ctx.font      = `${emojiSz}px serif`;
       ctx.textAlign = 'center';
-      ctx.fillText(ch.moods.default, cx + cardW / 2, cardY + cardH * 0.42);
+      ctx.fillText(ch.moods.default, cx + cardW / 2, cy + cardH * 0.42);
     }
 
     // Name
     ctx.fillStyle = isHover ? ch.color : '#cccccc';
     ctx.font      = `bold ${Math.min(15, cardW * 0.155)}px monospace`;
-    ctx.fillText(ch.name, cx + cardW / 2, cardY + cardH * 0.68);
+    ctx.fillText(ch.name, cx + cardW / 2, cy + cardH * 0.68);
 
     // Tap hint
     ctx.fillStyle = isHover ? ch.color : '#33334a';
     ctx.font      = `${Math.min(10, cardW * 0.11)}px monospace`;
-    ctx.fillText('TAP TO PLAY', cx + cardW / 2, cardY + cardH * 0.87);
+    ctx.fillText('TAP TO PLAY', cx + cardW / 2, cy + cardH * 0.87);
   }
 }
 
@@ -976,18 +1013,26 @@ function loadCharactersFromStorage() {
   try {
     const raw = localStorage.getItem(CHAR_STORAGE_KEY);
     if (!raw) return;
-    JSON.parse(raw).forEach((s, i) => {
-      if (!CHARACTERS[i]) return;
-      if (s.name)  CHARACTERS[i].name  = s.name;
-      if (s.color) CHARACTERS[i].color = s.color;
+    const stored = JSON.parse(raw);
+    if (!Array.isArray(stored) || stored.length === 0) return;
+    CHARACTERS.length = 0;
+    stored.forEach(s => {
+      const ch = {
+        name:     s.name  || 'Character',
+        color:    s.color || '#888888',
+        moods:    s.moods || { default: '⭐', happy: '🥳', angry: '😤', sad: '😢' },
+        imgs:     {},
+        _imgData: {}
+      };
       ['default','happy','angry','sad'].forEach(mood => {
         if (s.images && s.images[mood]) {
-          CHARACTERS[i]._imgData[mood] = s.images[mood];
+          ch._imgData[mood] = s.images[mood];
           const img = new Image();
           img.src = s.images[mood];
-          CHARACTERS[i].imgs[mood] = img;
+          ch.imgs[mood] = img;
         }
       });
+      CHARACTERS.push(ch);
     });
   } catch(e) { /* corrupt storage – ignore */ }
 }
@@ -996,6 +1041,7 @@ function saveCharactersToStorage() {
   const data = CHARACTERS.map(ch => ({
     name:   ch.name,
     color:  ch.color,
+    moods:  ch.moods,
     images: ch._imgData,
   }));
   localStorage.setItem(CHAR_STORAGE_KEY, JSON.stringify(data));
@@ -1045,6 +1091,7 @@ function renderCharList() {
   CHARACTERS.forEach((ch, i) => {
     const row  = document.createElement('div');
     row.className = 's-row s-row-tappable';
+    row.style.cssText = 'gap:10px';
 
     const avatarWrap = document.createElement('div');
     avatarWrap.className = 'char-avatar-wrap';
@@ -1067,13 +1114,29 @@ function renderCharList() {
 
     row.appendChild(avatarWrap);
     row.appendChild(info);
+
+    if (CHARACTERS.length > 1) {
+      const delBtn = document.createElement('button');
+      delBtn.className   = 'char-row-delete';
+      delBtn.textContent = '×';
+      delBtn.title       = 'Delete character';
+      delBtn.addEventListener('click', e => { e.stopPropagation(); removeCharacter(i); });
+      row.appendChild(delBtn);
+    }
+
     row.appendChild(arrow);
     row.addEventListener('click', () => openCharEditor(i));
     card.appendChild(row);
   });
 
   section.appendChild(card);
+
+  const addBtn = document.createElement('button');
+  addBtn.className   = 'btn-add-char';
+  addBtn.innerHTML   = '<span style="font-size:20px;line-height:1">+</span> Add Character';
+  addBtn.addEventListener('click', addCharacter);
   container.appendChild(section);
+  container.appendChild(addBtn);
 }
 
 // ── Mood metadata ─────────────────────────────────────────────────────────────
@@ -1087,10 +1150,11 @@ const MOOD_META = {
 function openCharEditor(idx) {
   charEditIdx = idx;
   const ch    = CHARACTERS[idx];
-  document.getElementById('char-list-view').style.display = 'none';
-  document.getElementById('char-edit-view').style.display = 'block';
-  document.getElementById('char-title').textContent = ch.name;
-  document.getElementById('char-edit-name').value   = ch.name;
+  document.getElementById('char-list-view').style.display  = 'none';
+  document.getElementById('char-edit-view').style.display  = 'block';
+  document.getElementById('char-title').textContent        = ch.name;
+  document.getElementById('char-edit-name').value          = ch.name;
+  document.getElementById('char-delete-btn').style.display = CHARACTERS.length > 1 ? 'block' : 'none';
   renderMoodGrid(ch);
 }
 
@@ -1123,6 +1187,40 @@ document.getElementById('char-save-btn').addEventListener('click', () => {
   saveCharactersToStorage();
   showCharList();
 });
+
+document.getElementById('char-delete-btn').addEventListener('click', () => {
+  removeCharacter(charEditIdx);
+});
+
+// ── Add / Remove characters ───────────────────────────────────────────────────
+const NEW_CHAR_PALETTE = [
+  { color: '#ff9500', moods: { default: '⭐', happy: '🌟', angry: '💥', sad: '😞' } },
+  { color: '#ff2d55', moods: { default: '🦊', happy: '🎉', angry: '🔥', sad: '💔' } },
+  { color: '#5856d6', moods: { default: '👾', happy: '🤩', angry: '😈', sad: '😔' } },
+  { color: '#34aadc', moods: { default: '🐬', happy: '🥰', angry: '😤', sad: '😢' } },
+  { color: '#4cd964', moods: { default: '🐸', happy: '😄', angry: '😠', sad: '😭' } },
+];
+
+function addCharacter() {
+  const template = NEW_CHAR_PALETTE[CHARACTERS.length % NEW_CHAR_PALETTE.length];
+  CHARACTERS.push({
+    name:     'New Character',
+    color:    template.color,
+    moods:    { ...template.moods },
+    imgs:     {},
+    _imgData: {}
+  });
+  saveCharactersToStorage();
+  openCharEditor(CHARACTERS.length - 1);
+}
+
+function removeCharacter(idx) {
+  if (CHARACTERS.length <= 1) return;
+  CHARACTERS.splice(idx, 1);
+  if (playerCharIdx >= CHARACTERS.length) playerCharIdx = CHARACTERS.length - 1;
+  saveCharactersToStorage();
+  showCharList();
+}
 
 // ── Image picker → crop ───────────────────────────────────────────────────────
 let pendingMood = null;
