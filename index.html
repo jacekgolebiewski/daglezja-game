@@ -126,7 +126,15 @@ function init() {
   const groundY     = H - B;
   const groundWidth = Math.ceil(W / B) + 4;  // 1 screen of safe ground
 
-  platforms.push({ wx: 0, y: groundY, wb: groundWidth });
+  // Greenhouse starting platform — fixed plants inside the glasshouse
+  platforms.push({ wx: 0, y: groundY, wb: groundWidth, decor: [
+    { emoji: '🪴', slot: 1  },
+    { emoji: '🌻', slot: 4  },
+    { emoji: '🌿', slot: 7  },
+    { emoji: '🌷', slot: 11 },
+    { emoji: '🌱', slot: 14 },
+    { emoji: '🪣', slot: 17 },
+  ]});
   genX        = groundWidth * B;
   genLastY    = groundY;
   genLastRight = genX;
@@ -154,10 +162,31 @@ function genNext() {
   const newY = Math.max(minY, Math.min(maxY, genLastY + dyB * B));
   const startX = genLastRight + gapB * B;
 
-  platforms.push({ wx: startX, y: newY, wb: widB });
+  platforms.push({ wx: startX, y: newY, wb: widB, decor: pickDecor(widB) });
   genLastRight = startX + widB * B;
   genLastY     = newY;
   genX         = genLastRight;
+}
+
+// ── Platform decoration picker ────────────────────────────────────────────────
+const DECOR_POOL = [
+  '🌱','🌿','🌸','🌻','🌷','🌾','🍀','🌵',
+  '🪴','🌲','🌳','🎋',
+  '🛒','🪣','🪚','🔨','🌡️','🪤',
+];
+function pickDecor(wb) {
+  const r = Math.random();
+  if (r < 0.30) return [];                       // 30 % bare platform
+  const count = r < 0.68 ? 1 : r < 0.90 ? 2 : 3;
+  const items = [];
+  const used  = new Set();
+  for (let i = 0; i < count; i++) {
+    let slot, tries = 0;
+    do { slot = Math.floor(Math.random() * wb); tries++; } while (used.has(slot) && tries < 10);
+    used.add(slot);
+    items.push({ emoji: DECOR_POOL[Math.floor(Math.random() * DECOR_POOL.length)], slot });
+  }
+  return items;
 }
 
 // ── Choice path generation ────────────────────────────────────────────────────
@@ -462,6 +491,119 @@ function drawBackground() {
     ctx.arc(cx - r * 0.70,  cy + r * 0.24, r * 0.62,  0, Math.PI * 2);
     ctx.fill();
   }
+
+  // Background tree silhouettes on the near hill (same parallax as near hill)
+  const treeOff = (cameraX * 0.28) % (W * 2.5);
+  const treeDefs = [
+    { px: 0.04, h: 0.13, w: 28 }, { px: 0.13, h: 0.10, w: 22 },
+    { px: 0.22, h: 0.15, w: 32 }, { px: 0.35, h: 0.11, w: 24 },
+    { px: 0.48, h: 0.14, w: 30 }, { px: 0.60, h: 0.09, w: 20 },
+    { px: 0.70, h: 0.13, w: 28 }, { px: 0.82, h: 0.12, w: 26 },
+    { px: 0.94, h: 0.10, w: 22 },
+  ];
+  ctx.fillStyle = '#4a7a2a';
+  for (const t of treeDefs) {
+    const tx   = ((t.px * W * 2.5 - treeOff) % (W * 2.5) + W * 2.5) % (W * 2.5) - W * 0.1;
+    const th   = H * t.h;
+    const baseY = H * 0.76;
+    // Pine silhouette: 3 overlapping triangles
+    for (let tier = 0; tier < 3; tier++) {
+      const ty  = baseY - th * (0.35 + tier * 0.22);
+      const by  = baseY - th * (tier * 0.18);
+      const hw  = t.w * (1 - tier * 0.18);
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(tx + hw, by);
+      ctx.lineTo(tx - hw, by);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // Trunk
+    ctx.fillRect(tx - 2, baseY - th * 0.08, 4, th * 0.1);
+  }
+
+  // Glasshouse at world start
+  drawGlasshouse();
+}
+
+function drawGlasshouse() {
+  const ghW   = 700;                    // world width
+  const baseY = H - B;                  // top of ground platform
+  const ghH   = baseY * 0.68;           // wall height
+  const sx    = -cameraX;              // screen X of left edge
+
+  if (sx + ghW < -60 || sx > W + 60) return;
+
+  const frameCol = '#5c3d1a';
+  const glassCol = 'rgba(190,238,255,0.20)';
+
+  // ── Walls ──
+  // Glass fill
+  ctx.fillStyle = glassCol;
+  ctx.fillRect(sx, baseY - ghH, ghW, ghH);
+
+  // Vertical frame posts
+  const panelW = 70;
+  ctx.strokeStyle = frameCol;
+  ctx.lineWidth   = 2;
+  for (let wx = sx; wx <= sx + ghW + 1; wx += panelW) {
+    ctx.beginPath(); ctx.moveTo(wx, baseY - ghH); ctx.lineTo(wx, baseY); ctx.stroke();
+  }
+  // Horizontal rails
+  const panelH = 65;
+  for (let wy = baseY - ghH; wy <= baseY + 1; wy += panelH) {
+    ctx.beginPath(); ctx.moveTo(sx, wy); ctx.lineTo(sx + ghW, wy); ctx.stroke();
+  }
+
+  // ── Peaked roof ──
+  const peakX = sx + ghW / 2;
+  const peakY = baseY - ghH - H * 0.18;
+
+  // Roof glass (two panels)
+  ctx.fillStyle = 'rgba(190,238,255,0.16)';
+  ctx.beginPath();
+  ctx.moveTo(sx,        baseY - ghH);
+  ctx.lineTo(peakX,     peakY);
+  ctx.lineTo(sx + ghW,  baseY - ghH);
+  ctx.closePath();
+  ctx.fill();
+
+  // Roof frame lines (rafters)
+  ctx.strokeStyle = frameCol;
+  ctx.lineWidth   = 2;
+  const rafterCount = Math.floor(ghW / panelW);
+  for (let r = 0; r <= rafterCount; r++) {
+    const rx = sx + (r / rafterCount) * ghW;
+    ctx.beginPath(); ctx.moveTo(rx, baseY - ghH); ctx.lineTo(peakX, peakY); ctx.stroke();
+  }
+  // Ridge beam and eave beams
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(peakX, peakY);
+  ctx.lineTo(sx, baseY - ghH);
+  ctx.lineTo(sx + ghW, baseY - ghH);
+  ctx.moveTo(peakX - 1, peakY - 2); ctx.lineTo(peakX + 1, peakY + H * 0.18 + ghH);
+  ctx.stroke();
+
+  // Tall door opening (centred, 2 blocks wide)
+  const doorW = B * 2.5, doorH = ghH * 0.62;
+  const doorX = sx + ghW / 2 - doorW / 2;
+  const doorY = baseY - doorH;
+  ctx.fillStyle = 'rgba(200,245,210,0.35)';
+  ctx.fillRect(doorX, doorY, doorW, doorH);
+  ctx.strokeStyle = frameCol;
+  ctx.lineWidth   = 2.5;
+  ctx.strokeRect(doorX, doorY, doorW, doorH);
+  // Door centre bar
+  ctx.beginPath();
+  ctx.moveTo(doorX + doorW / 2, doorY);
+  ctx.lineTo(doorX + doorW / 2, baseY);
+  ctx.stroke();
+
+  // Heavy outer frame
+  ctx.strokeStyle = frameCol;
+  ctx.lineWidth   = 4;
+  ctx.strokeRect(sx, baseY - ghH, ghW, ghH);
 }
 
 function drawPlatforms() {
@@ -492,6 +634,20 @@ function drawPlatforms() {
     ctx.fillStyle = 'rgba(255,255,255,0.28)';
     roundRect(sx + 5, p.y + 1, Math.max(0, pw - 10), 3, 2);
     ctx.fill();
+
+    // Platform decorations (plants, tools, etc.) — only on non-choice platforms
+    if (!isChoice && p.decor && p.decor.length > 0) {
+      const decorSz = Math.min(B * 0.78, 26);
+      ctx.font         = `${decorSz}px serif`;
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'bottom';
+      for (const d of p.decor) {
+        const dx = sx + d.slot * B + B / 2;
+        if (dx < -B || dx > W + B) continue;
+        ctx.fillText(d.emoji, dx, p.y - 1);
+      }
+      ctx.textBaseline = 'alphabetic';
+    }
 
     // Answer label for choice platforms — dark pill badge above grass
     if (isChoice && dlg && dlg.question) {
