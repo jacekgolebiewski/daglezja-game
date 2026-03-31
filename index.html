@@ -46,12 +46,15 @@ const GRAVITY       = 2100;  // px/s²
 const JUMP_VY       = -600;  // px/s  (negative = upward)
 const FLOAT_GRAV    = 0.38;  // gravity multiplier while holding & ascending
 const PLAYER_SCR_X  = 130;   // fixed screen X of player
-const SPEED_START   = 320;   // px/s
-const SPEED_MAX     = 850;   // px/s
-const SPEED_STEP    = 20;    // added each interval
-const SPEED_INT          = 5;    // seconds between speed bumps
-const DIALOGUE_FIRST     = 30;   // blocks until first encounter
-const DIALOGUE_INTERVAL  = 120;  // blocks between subsequent encounters
+const SPEED_MAX     = 850;   // px/s (hard cap, never adjusted)
+// ── Gameplay-tunable values (overridden from localStorage) ────────────────
+let SPEED_START        = 320;  // px/s initial speed
+let SPEED_REWARD       = 40;   // speed gained on correct NPC answer
+let SPEED_PENALTY      = 30;   // speed lost on wrong NPC answer
+let GAME_MAX_GAP       = 2;    // max gap between platforms (blocks, 1–3)
+let DIALOGUE_FIRST     = 30;   // blocks until first encounter
+let DIALOGUE_INTERVAL  = 120;  // blocks between subsequent encounters
+const GAMEPLAY_STORAGE_KEY = 'blockrunner_gameplay_v1';
 
 // ── Globals ─────────────────────────────────────────────────────────────────
 let W, H;
@@ -143,7 +146,7 @@ function init() {
 
 // ── Procedural platform generation ──────────────────────────────────────────
 function genNext() {
-  const gapB = 1 + Math.floor(Math.random() * 3);           // gap: 1–3 blocks
+  const gapB = 1 + Math.floor(Math.random() * GAME_MAX_GAP); // gap: 1–GAME_MAX_GAP blocks
   const widB = 4 + Math.floor(Math.random() * 4);           // width: 4–7 blocks
   const dyB  = Math.floor(Math.random() * 5) - 2;           // Δheight: –2..+2 blocks
   const minY = H - B * 8;
@@ -276,7 +279,7 @@ function answerDialogue(idx) {
   dlg.reactTimer     = 0;
 
   if (idx === dlg.question.correct) {
-    speed = Math.min(SPEED_MAX, speed + 40);
+    speed = Math.min(SPEED_MAX, speed + SPEED_REWARD);
     // Happy: launch character upward
     dlg.charBounceV = -420;
     // Burst of confetti from the character area
@@ -294,7 +297,7 @@ function answerDialogue(idx) {
       });
     }
   } else {
-    speed = Math.max(SPEED_START, speed - 30);
+    speed = Math.max(SPEED_START, speed - SPEED_PENALTY);
     // Angry: screen shake + character rage-wobble
     screenShake = 18;
   }
@@ -753,28 +756,33 @@ function drawCover() {
   settingsBtn    = { x: 8, y: H - sLinkSz - 18, w: sLinkW + 8, h: sLinkSz + 14 };
 }
 
-// Returns card layout constants (shared between draw & hit-test)
+// Returns card layout constants — scales to fit up to 15 characters
 function cardLayout() {
-  const n     = CHARACTERS.length;
-  const cols  = Math.min(3, n);
-  const rows  = Math.ceil(n / cols);
-  const cardW = Math.min(130, (W - 80) / (cols + 0.4));
-  const cardH = cardW * 1.55;
-  const gap   = Math.min(20, Math.max(8, (W - cardW * cols - 60) / Math.max(1, cols - 1)));
-  const rowGap = cardH * 0.12;
-  const totalH = rows * cardH + (rows - 1) * rowGap;
-  const cardY  = (H - totalH) / 2 - H * 0.04;
-  return { cardW, cardH, gap, cardY, cols, rows, rowGap };
+  const n    = CHARACTERS.length;
+  const cols = Math.min(5, n);
+  const rows = Math.ceil(n / cols);
+
+  const titleH = H * 0.22;     // reserved for title + subtitle
+  const padX   = 28, padY = 8;
+  const gapX   = Math.min(10, 4 + (5 - cols) * 3);
+  const gapY   = Math.min(10, 4 + (3 - rows) * 3);
+
+  const cardW  = ((W - padX * 2) - gapX * (cols - 1)) / cols;
+  const cardH  = ((H - titleH - padY * 2) - gapY * Math.max(0, rows - 1)) / rows;
+  const cardY  = titleH + padY;
+
+  return { cardW, cardH, gap: gapX, rowGap: gapY, cardY, cols, rows, padX };
 }
 
 function cardPosition(i) {
-  const { cardW, cardH, gap, cardY, cols, rows, rowGap } = cardLayout();
-  const row  = Math.floor(i / cols);
-  const col  = i % cols;
-  const n    = CHARACTERS.length;
-  // Center last row if it has fewer cards than cols
+  const { cardW, cardH, gap, rowGap, cardY, cols, rows, padX } = cardLayout();
+  const row = Math.floor(i / cols);
+  const col = i % cols;
+  const n   = CHARACTERS.length;
+  // Centre last row when it has fewer cards than a full row
   const rowCols = (row === rows - 1 && n % cols !== 0) ? n % cols : cols;
-  const cx = (W - (rowCols * cardW + Math.max(0, rowCols - 1) * gap)) / 2 + col * (cardW + gap);
+  const rowW    = rowCols * cardW + (rowCols - 1) * gap;
+  const cx = (W - rowW) / 2 + col * (cardW + gap);
   const cy = cardY + row * (cardH + rowGap);
   return { cx, cy, cardW, cardH };
 }
@@ -1115,8 +1123,24 @@ function loop(ts) {
   draw();
 }
 
+// ── Gameplay settings ─────────────────────────────────────────────────────────
+function loadGameplaySettings() {
+  try {
+    const raw = localStorage.getItem(GAMEPLAY_STORAGE_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    if (typeof s.speedStart       === 'number') SPEED_START       = s.speedStart;
+    if (typeof s.speedReward      === 'number') SPEED_REWARD      = s.speedReward;
+    if (typeof s.speedPenalty     === 'number') SPEED_PENALTY     = s.speedPenalty;
+    if (typeof s.maxGap           === 'number') GAME_MAX_GAP      = s.maxGap;
+    if (typeof s.dialogueInterval === 'number') DIALOGUE_INTERVAL = s.dialogueInterval;
+    if (typeof s.dialogueFirst    === 'number') DIALOGUE_FIRST    = s.dialogueFirst;
+  } catch(e) { /* ignore corrupt data */ }
+}
+
 // ── Boot ─────────────────────────────────────────────────────────────────────
 loadCharactersFromStorage();
+loadGameplaySettings();
 state    = 'cover';
 lastTime = 0;
 requestAnimationFrame(loop);

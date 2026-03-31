@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>Settings — Block Runner</title>
+  <title>Settings — Daglezja</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -226,6 +226,42 @@
       cursor: pointer; font-family: inherit;
     }
     .crop-hint { color: rgba(255,255,255,0.5); font-size: 12px; }
+
+    /* ── Segment control ── */
+    .gp-row {
+      padding: 14px 16px;
+      border-bottom: 1px solid #e5e5ea;
+    }
+    .gp-row:last-child { border-bottom: none; }
+    .gp-label {
+      font-size: 14px; font-weight: 600; color: #1c1c1e;
+      margin-bottom: 4px;
+    }
+    .gp-hint {
+      font-size: 12px; color: #8e8e93; margin-bottom: 10px;
+    }
+    .seg {
+      display: flex; gap: 0;
+      border: 1.5px solid #d1d1d6; border-radius: 10px; overflow: hidden;
+    }
+    .seg button {
+      flex: 1; padding: 9px 6px;
+      background: none; border: none; border-right: 1px solid #d1d1d6;
+      font-size: 13px; font-weight: 500; color: #3c3c43;
+      cursor: pointer; font-family: inherit; transition: background 0.12s;
+    }
+    .seg button:last-child { border-right: none; }
+    .seg button.active {
+      background: #1a5c1f; color: #fff; font-weight: 600;
+    }
+    .seg button:not(.active):hover { background: #f2f2f7; }
+    .gp-reset {
+      background: none; border: 1.5px solid #d1d1d6; border-radius: 10px;
+      padding: 12px; font-size: 14px; color: #8e8e93;
+      cursor: pointer; font-family: inherit; width: 100%;
+      margin-top: 4px;
+    }
+    .gp-reset:hover { border-color: #1a5c1f; color: #1a5c1f; }
   </style>
 </head>
 <body>
@@ -244,12 +280,16 @@
         <span class="s-key">Characters</span>
         <span class="s-val">Manage ›</span>
       </div>
+      <div class="s-row s-row-tappable" id="s-gameplay">
+        <span class="s-key">Gameplay</span>
+        <span class="s-val">Adjust ›</span>
+      </div>
     </div>
     <p class="s-section-label">About</p>
     <div class="s-card">
       <div class="s-row">
         <span class="s-key">Game</span>
-        <span class="s-val">Block Runner</span>
+        <span class="s-val">Daglezja</span>
       </div>
       <div class="s-row">
         <span class="s-key">Version</span>
@@ -288,6 +328,79 @@
     <button type="button" class="btn-add-interaction" id="btn-add-interaction">+ Add Interaction</button>
     <button class="btn-primary" id="char-save-btn">Save</button>
     <button class="btn-delete-char" id="char-delete-btn" style="display:none">Delete Character</button>
+  </div>
+</div>
+
+<!-- ── View: Gameplay ─────────────────────────────────────────────────────── -->
+<div id="view-gameplay" class="view">
+  <div class="s-nav">
+    <button class="s-back" id="btn-back-to-settings-gp">&#8592; Settings</button>
+    <span class="s-nav-title">Gameplay</span>
+    <span class="s-spacer"></span>
+  </div>
+  <div class="s-body">
+
+    <p class="s-section-label">Speed</p>
+    <div class="s-card">
+      <div class="gp-row">
+        <div class="gp-label">Starting speed</div>
+        <div class="gp-hint">How fast the runner moves at the beginning of each run</div>
+        <div class="seg" id="seg-speed-start">
+          <button data-val="200">Leisurely</button>
+          <button data-val="320">Normal</button>
+          <button data-val="480">Speedy</button>
+        </div>
+      </div>
+      <div class="gp-row">
+        <div class="gp-label">Speed change per answer</div>
+        <div class="gp-hint">How much speed is gained (correct) or lost (wrong) after each NPC question</div>
+        <div class="seg" id="seg-speed-step">
+          <button data-val="20|15">Small</button>
+          <button data-val="40|30">Normal</button>
+          <button data-val="70|50">Large</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="s-section-label">Difficulty</p>
+    <div class="s-card">
+      <div class="gp-row">
+        <div class="gp-label">Platform gaps</div>
+        <div class="gp-hint">Maximum gap size between platforms — wider gaps are harder to jump</div>
+        <div class="seg" id="seg-max-gap">
+          <button data-val="1">Easy</button>
+          <button data-val="2">Normal</button>
+          <button data-val="3">Hard</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="s-section-label">NPC Encounters</p>
+    <div class="s-card">
+      <div class="gp-row">
+        <div class="gp-label">First encounter</div>
+        <div class="gp-hint">How many blocks the player runs before the first NPC appears</div>
+        <div class="seg" id="seg-dlg-first">
+          <button data-val="10">Immediately</button>
+          <button data-val="30">Soon</button>
+          <button data-val="80">Later</button>
+        </div>
+      </div>
+      <div class="gp-row">
+        <div class="gp-label">Encounter frequency</div>
+        <div class="gp-hint">Distance between subsequent NPC encounters</div>
+        <div class="seg" id="seg-dlg-interval">
+          <button data-val="60">Very often</button>
+          <button data-val="120">Often</button>
+          <button data-val="240">Rarely</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding: 0 0 8px">
+      <button class="gp-reset" id="btn-gp-reset">Reset to defaults</button>
+    </div>
+
   </div>
 </div>
 
@@ -392,6 +505,111 @@ document.getElementById('s-characters').addEventListener('click', () => {
   showView('view-char-list');
   renderSyncSection();
   renderCharList();
+});
+
+document.getElementById('s-gameplay').addEventListener('click', () => {
+  renderGameplayView();
+  showView('view-gameplay');
+});
+document.getElementById('btn-back-to-settings-gp').addEventListener('click', () => {
+  showView('view-settings');
+});
+
+// ── Gameplay settings ─────────────────────────────────────────────────────────
+const GAMEPLAY_STORAGE_KEY = 'blockrunner_gameplay_v1';
+
+const GP_DEFAULTS = {
+  speedStart:       320,
+  speedReward:      40,
+  speedPenalty:     30,
+  maxGap:           2,
+  dialogueFirst:    30,
+  dialogueInterval: 120,
+};
+
+function loadGP() {
+  try {
+    const raw = localStorage.getItem(GAMEPLAY_STORAGE_KEY);
+    return raw ? Object.assign({}, GP_DEFAULTS, JSON.parse(raw)) : { ...GP_DEFAULTS };
+  } catch(e) { return { ...GP_DEFAULTS }; }
+}
+
+function saveGP(gp) {
+  localStorage.setItem(GAMEPLAY_STORAGE_KEY, JSON.stringify(gp));
+}
+
+function segActivate(segId, value) {
+  const seg = document.getElementById(segId);
+  if (!seg) return;
+  seg.querySelectorAll('button').forEach(b => {
+    b.classList.toggle('active', b.dataset.val === String(value));
+  });
+}
+
+function renderGameplayView() {
+  const gp = loadGP();
+
+  segActivate('seg-speed-start',   gp.speedStart);
+  segActivate('seg-speed-step',    gp.speedReward + '|' + gp.speedPenalty);
+  segActivate('seg-max-gap',       gp.maxGap);
+  segActivate('seg-dlg-first',     gp.dialogueFirst);
+  segActivate('seg-dlg-interval',  gp.dialogueInterval);
+
+  // Wire up segments (idempotent — remove old listeners by cloning)
+  function wire(segId, handler) {
+    const old = document.getElementById(segId);
+    const fresh = old.cloneNode(true);
+    old.parentNode.replaceChild(fresh, old);
+    fresh.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        fresh.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const gp2 = loadGP();
+        handler(gp2, btn.dataset.val);
+        saveGP(gp2);
+      });
+    });
+    // Re-apply active state after clone
+    const gp3 = loadGP();
+    segActivate(segId, handler.__activeKey ? handler.__activeKey(gp3) : '');
+  }
+
+  // Simpler direct wiring
+  ['seg-speed-start','seg-speed-step','seg-max-gap','seg-dlg-first','seg-dlg-interval'].forEach(id => {
+    const el = document.getElementById(id);
+    const clone = el.cloneNode(true);
+    el.parentNode.replaceChild(clone, el);
+    clone.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        clone.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const gp2 = loadGP();
+        applySegVal(id, gp2, btn.dataset.val);
+        saveGP(gp2);
+      });
+    });
+  });
+
+  // Re-apply active highlights after cloning
+  const gp2 = loadGP();
+  segActivate('seg-speed-start',   gp2.speedStart);
+  segActivate('seg-speed-step',    gp2.speedReward + '|' + gp2.speedPenalty);
+  segActivate('seg-max-gap',       gp2.maxGap);
+  segActivate('seg-dlg-first',     gp2.dialogueFirst);
+  segActivate('seg-dlg-interval',  gp2.dialogueInterval);
+}
+
+function applySegVal(segId, gp, val) {
+  if (segId === 'seg-speed-start')    { gp.speedStart       = Number(val); }
+  if (segId === 'seg-speed-step')     { const [r,p] = val.split('|').map(Number); gp.speedReward = r; gp.speedPenalty = p; }
+  if (segId === 'seg-max-gap')        { gp.maxGap           = Number(val); }
+  if (segId === 'seg-dlg-first')      { gp.dialogueFirst    = Number(val); }
+  if (segId === 'seg-dlg-interval')   { gp.dialogueInterval = Number(val); }
+}
+
+document.getElementById('btn-gp-reset').addEventListener('click', () => {
+  saveGP({ ...GP_DEFAULTS });
+  renderGameplayView();
 });
 
 // ── Character list ────────────────────────────────────────────────────────────
