@@ -315,9 +315,7 @@ function update(dt) {
   }
 
   // Auto-scroll camera; player follows at fixed screen X
-  // Slow scroll during dialogue so player has time to navigate the split path
-  const scrollSpeed = (state === 'dialogue') ? speed * 0.65 : speed;
-  cameraX  += scrollSpeed * dt;
+  cameraX  += speed * dt;
   player.wx = cameraX + PLAYER_SCR_X;
 
   // Vertical physics
