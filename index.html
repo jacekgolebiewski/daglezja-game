@@ -195,8 +195,9 @@ function pickDecor(wb) {
 
 // ── Choice path generation ────────────────────────────────────────────────────
 function generateChoicePaths() {
-  // Place fork far enough ahead so the player has time to read the dialogue
-  const forkX = Math.round((cameraX + W * 1.6) / B) * B;
+  // Place fork at a randomised distance so the split feels different each time
+  const forkDist = W * (1.3 + Math.random() * 0.7);
+  const forkX = Math.round((cameraX + forkDist) / B) * B;
 
   // Clear everything pre-generated at or beyond the fork
   platforms = platforms.filter(p => p.wx + p.wb * B <= forkX);
@@ -208,9 +209,9 @@ function generateChoicePaths() {
   }
 
   const count  = 5;
-  const pw     = 4;
-  const step   = (pw + 3) * B;
-  const upperY = H - B * 5;   // closer to ground so the jump is manageable
+  const pw     = 3 + Math.floor(Math.random() * 3);          // 3–5 blocks wide
+  const step   = (pw + 2 + Math.floor(Math.random() * 3)) * B; // gap 2–4 blocks
+  const upperY = H - B * (4 + Math.floor(Math.random() * 3)); // 4–6 blocks up
   const lowerY = H - B;
   // Randomly swap which path (upper/lower) holds choice 0 vs 1 each time
   const pathFlip = Math.random() < 0.5;
@@ -313,7 +314,7 @@ function answerDialogue(idx) {
 
   if (idx === dlg.question.correct) {
     speedRampTimer = Infinity;  // stop initial ramp; NPC system takes over
-    speed = Math.min(SPEED_MAX, SPEED_START + SPEED_REWARD);
+    speed = Math.max(SPEED_START, speed - SPEED_REWARD);
     // Happy: launch character upward
     dlg.charBounceV = -420;
     // Burst of confetti from the character area
@@ -332,7 +333,7 @@ function answerDialogue(idx) {
     }
   } else {
     speedRampTimer = Infinity;  // stop initial ramp; NPC system takes over
-    speed = Math.max(SPEED_START, speed - SPEED_PENALTY);
+    speed = Math.min(SPEED_MAX, speed + SPEED_PENALTY);
     // Angry: screen shake + character rage-wobble
     screenShake = 18;
   }
