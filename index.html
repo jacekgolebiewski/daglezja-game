@@ -177,8 +177,8 @@ const DECOR_POOL = [
 ];
 function pickDecor(wb) {
   const r = Math.random();
-  if (r < 0.12) return [];                       // 12 % bare platform
-  const count = r < 0.45 ? 1 : r < 0.78 ? 2 : 3;
+  if (r < 0.04) return [];                       // 4 % bare platform
+  const count = r < 0.25 ? 1 : r < 0.55 ? 2 : r < 0.82 ? 3 : 4;
   const items = [];
   const used  = new Set();
   for (let i = 0; i < count; i++) {
@@ -809,14 +809,14 @@ function drawPlatforms() {
 
     // Platform decorations (plants, tools, etc.) — only on non-choice platforms
     if (!isChoice && p.decor && p.decor.length > 0) {
-      const decorSz = Math.min(B * 0.78, 26);
+      const decorSz = Math.min(B * 0.95, 32);
       ctx.font         = `${decorSz}px serif`;
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'bottom';
       for (const d of p.decor) {
         const dx = sx + d.slot * B + B / 2;
         if (dx < -B || dx > W + B) continue;
-        ctx.fillText(d.emoji, dx, p.y - 1);
+        ctx.fillText(d.emoji, dx, p.y - 4);
       }
       ctx.textBaseline = 'alphabetic';
     }
