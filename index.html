@@ -170,11 +170,19 @@ function genNext() {
 }
 
 // ── Platform decoration picker ────────────────────────────────────────────────
-const DECOR_POOL = [
-  '🌱','🌿','🌸','🌻','🌷','🌾','🍀','🌵',
-  '🪴','🌲','🌳','🎋',
-  '🛒','🪣','🪚','🔨','🌡️','🪤',
+// Nature items appear ~85% of the time; garden-mall items ~15%
+const DECOR_NATURE = [
+  '🌱','🌿','🌸','🌻','🌷','🌾','🍀','🌵','🪴','🌲','🌳','🎋',
+  '🌼','🌺','🍃','🪻','🫧','🌑','🍄','🌰','🪨','🪵',
 ];
+const DECOR_MALL = [
+  '🛒','🪣','🪚','🔨','🌡️','🪤','🧴','🧹','🪜','💧','🏷️','🎍',
+];
+function pickDecorEmoji() {
+  return Math.random() < 0.85
+    ? DECOR_NATURE[Math.floor(Math.random() * DECOR_NATURE.length)]
+    : DECOR_MALL[Math.floor(Math.random() * DECOR_MALL.length)];
+}
 function pickDecor(wb) {
   if (Math.random() < 0.08) return [];
   // Independent count roll — feels less formulaic than a single r branch
@@ -187,7 +195,7 @@ function pickDecor(wb) {
     do { slot = Math.floor(Math.random() * wb); tries++; } while (used.has(slot) && tries < 10);
     used.add(slot);
     // Bake per-item scale (0.72–1.10) so size is stable across frames
-    items.push({ emoji: DECOR_POOL[Math.floor(Math.random() * DECOR_POOL.length)], slot,
+    items.push({ emoji: pickDecorEmoji(), slot,
                  scale: 0.72 + Math.random() * 0.38 });
   }
   return items;
@@ -821,7 +829,7 @@ function drawPlatforms() {
         const dx = sx + d.slot * B + B / 2;
         if (dx < -B || dx > W + B) continue;
         ctx.font = `${Math.round(baseDecorSz * (d.scale || 1))}px serif`;
-        ctx.fillText(d.emoji, dx, p.y - 1);
+        ctx.fillText(d.emoji, dx, p.y - 5);
       }
       ctx.textBaseline = 'alphabetic';
     }
