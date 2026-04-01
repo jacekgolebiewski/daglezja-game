@@ -60,7 +60,7 @@ const GAMEPLAY_STORAGE_KEY = 'blockrunner_gameplay_v1';
 let W, H;
 let state;           // 'cover' | 'avatar_select' | 'playing' | 'dead'
 let player, cameraX, platforms;
-let speed, speedTimer, score, best;
+let speed, speedRampTimer, speedTimer, score, best;
 let holding, lastTime;
 let genX, genLastY, genLastRight;
 let playerCharIdx;        // index into CHARACTERS; set on avatar select
@@ -113,6 +113,7 @@ resize();
 // ── Init / reset game ────────────────────────────────────────────────────────
 function init() {
   speed                = 0;
+  speedRampTimer       = 0;   // seconds elapsed for initial ramp-up
   speedTimer           = 0;
   score                = 0;
   cameraX              = 0;
@@ -245,9 +246,6 @@ function triggerDialogue() {
     question = QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)];
   }
 
-  // Kick off speed on first NPC encounter (game starts at 0)
-  if (speed === 0) speed = SPEED_START;
-
   dlg = {
     phase:          'typing',
     charIdx,
@@ -311,7 +309,8 @@ function answerDialogue(idx) {
   dlg.reactTimer     = 0;
 
   if (idx === dlg.question.correct) {
-    speed = Math.min(SPEED_MAX, speed + SPEED_REWARD);
+    speedRampTimer = Infinity;  // stop initial ramp; NPC system takes over
+    speed = Math.min(SPEED_MAX, SPEED_START + SPEED_REWARD);
     // Happy: launch character upward
     dlg.charBounceV = -420;
     // Burst of confetti from the character area
@@ -329,6 +328,7 @@ function answerDialogue(idx) {
       });
     }
   } else {
+    speedRampTimer = Infinity;  // stop initial ramp; NPC system takes over
     speed = Math.max(SPEED_START, speed - SPEED_PENALTY);
     // Angry: screen shake + character rage-wobble
     screenShake = 18;
@@ -344,6 +344,13 @@ function update(dt) {
   } else if (Math.random() < 0.004) {   // ~once every 4 s at 60 fps
     playerMoodKey   = Math.random() < 0.5 ? 'happy' : 'angry';
     playerMoodTimer = 0.5;
+  }
+
+  // Gradual ramp from 0 → SPEED_START over first 4 seconds
+  const RAMP_DURATION = 4;
+  if (speedRampTimer < RAMP_DURATION) {
+    speedRampTimer += dt;
+    speed = SPEED_START * Math.min(speedRampTimer / RAMP_DURATION, 1);
   }
 
   // Auto-scroll camera; player follows at fixed screen X
