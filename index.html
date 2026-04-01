@@ -810,6 +810,7 @@ function drawPlatforms() {
     // Platform decorations (plants, tools, etc.) — only on non-choice platforms
     if (!isChoice && p.decor && p.decor.length > 0) {
       const decorSz = Math.min(B * 0.95, 32);
+      ctx.fillStyle    = '#000';   // reset alpha — drawFloorBlock leaves rgba with low opacity
       ctx.font         = `${decorSz}px serif`;
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'bottom';
