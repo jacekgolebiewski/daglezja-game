@@ -61,7 +61,8 @@ let W, H;
 let state;           // 'cover' | 'avatar_select' | 'playing' | 'dead'
 let player, cameraX, platforms;
 let speed, speedRampTimer, speedTimer, score, best;
-let holding, lastTime;
+let holding, lastTime, jumpBuffer = 0;
+const JUMP_BUFFER_SEC = 0.14;  // seconds a pre-land jump press stays queued
 let genX, genLastY, genLastRight;
 let playerCharIdx;        // index into CHARACTERS; set on avatar select
 let avatarHoverIdx;       // card the pointer is hovering over
@@ -377,6 +378,9 @@ function update(dt) {
   player.y        += player.vy * dt;
   const curBottom  = player.y + player.h;
 
+  // Tick jump buffer
+  jumpBuffer = Math.max(0, jumpBuffer - dt);
+
   // Platform collision (top landing only)
   player.onGround = false;
   for (const p of platforms) {
@@ -384,8 +388,15 @@ function update(dt) {
     const pTop = p.y;
     if (player.vy >= 0 && prevBottom <= pTop + 2 && curBottom >= pTop) {
       player.y        = pTop - player.h;
-      player.vy       = 0;
       player.onGround = true;
+      if (jumpBuffer > 0) {
+        // Buffered jump: fire immediately on landing
+        player.vy = JUMP_VY;
+        player.onGround = false;
+        jumpBuffer = 0;
+      } else {
+        player.vy = 0;
+      }
       break;
     }
   }
@@ -1438,9 +1449,14 @@ function press(px, py) {
     return;
   }
 
-  if (state === 'playing' && player.onGround) {
-    player.vy       = JUMP_VY;
-    player.onGround = false;
+  if (state === 'playing') {
+    if (player.onGround) {
+      player.vy       = JUMP_VY;
+      player.onGround = false;
+      jumpBuffer      = 0;
+    } else {
+      jumpBuffer = JUMP_BUFFER_SEC;   // queue for landing
+    }
   }
 }
 function release() { holding = false; }
