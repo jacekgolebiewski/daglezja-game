@@ -112,7 +112,7 @@ resize();
 
 // ── Init / reset game ────────────────────────────────────────────────────────
 function init() {
-  speed                = SPEED_START;
+  speed                = 0;
   speedTimer           = 0;
   score                = 0;
   cameraX              = 0;
@@ -244,6 +244,9 @@ function triggerDialogue() {
   } else {
     question = QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)];
   }
+
+  // Kick off speed on first NPC encounter (game starts at 0)
+  if (speed === 0) speed = SPEED_START;
 
   dlg = {
     phase:          'typing',
