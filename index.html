@@ -1083,35 +1083,40 @@ function drawCover() {
   settingsBtn    = { x: 8, y: H - sLinkSz - 18, w: sLinkW + 8, h: sLinkSz + 14 };
 }
 
-// Returns card layout constants — scales to fit up to 15 characters
+// Returns card layout constants — square portrait tiles, up to 15 characters (5×3)
 function cardLayout() {
   const n    = CHARACTERS.length;
   const cols = Math.min(5, n);
   const rows = Math.ceil(n / cols);
 
-  const titleH = H * 0.18;     // reserved for title + subtitle
-  const padX   = 20, padY = 6;
-  const gapX   = Math.min(8, 3 + (5 - cols) * 2);
-  const gapY   = Math.min(8, 3 + (3 - rows) * 2);
+  const titleH = H * 0.22;
+  const botH   = 20;
+  const padX   = 10, padY = 4;
+  const gap    = 4;
 
-  const cardW  = ((W - padX * 2) - gapX * (cols - 1)) / cols;
-  const cardH  = ((H - titleH - padY * 2) - gapY * Math.max(0, rows - 1)) / rows;
-  const cardY  = titleH + padY;
+  const maxCellW = (W - padX * 2 - gap * (cols - 1)) / cols;
+  const maxCellH = (H - titleH - padY * 2 - botH - gap * Math.max(0, rows - 1)) / rows;
+  const cellSize = Math.min(maxCellW, maxCellH);
 
-  return { cardW, cardH, gap: gapX, rowGap: gapY, cardY, cols, rows, padX };
+  const gridW  = cols * cellSize + gap * (cols - 1);
+  const gridH  = rows * cellSize + gap * Math.max(0, rows - 1);
+  const startX = (W - gridW) / 2;
+  const startY = titleH + padY + ((H - titleH - padY * 2 - botH) - gridH) / 2;
+
+  return { cellSize, gap, startX, startY, cols, rows };
 }
 
 function cardPosition(i) {
-  const { cardW, cardH, gap, rowGap, cardY, cols, rows, padX } = cardLayout();
+  const { cellSize, gap, startX, startY, cols, rows } = cardLayout();
   const row = Math.floor(i / cols);
   const col = i % cols;
   const n   = CHARACTERS.length;
-  // Centre last row when it has fewer cards than a full row
+  // Centre last row when it has fewer tiles than a full row
   const rowCols = (row === rows - 1 && n % cols !== 0) ? n % cols : cols;
-  const rowW    = rowCols * cardW + (rowCols - 1) * gap;
-  const cx = (W - rowW) / 2 + col * (cardW + gap);
-  const cy = cardY + row * (cardH + rowGap);
-  return { cx, cy, cardW, cardH };
+  const rowW    = rowCols * cellSize + (rowCols - 1) * gap;
+  const cx = (W - rowW) / 2 + col * (cellSize + gap);
+  const cy = startY + row * (cellSize + gap);
+  return { cx, cy, cardW: cellSize, cardH: cellSize };
 }
 
 function getCardAtPoint(px, py) {
@@ -1160,15 +1165,15 @@ function drawAvatarSelect() {
     roundRect(cx, cy, cardW, cardH, 10);
     ctx.stroke();
 
-    // Avatar image or emoji
-    const emojiSz = Math.min(32, cardW * 0.40);
+    // Avatar image or emoji — fills upper ~60% of the square tile
+    const emojiSz = cardW * 0.52;
     const imgObj  = ch.imgs.default;
     if (imgObj && imgObj.complete && imgObj.naturalWidth) {
-      const isz = emojiSz * 1.3;
+      const isz = cardW * 0.64;
       const ix  = cx + cardW / 2 - isz / 2;
-      const iy  = cy + cardH * 0.10;
+      const iy  = cy + cardH * 0.06;
       ctx.save();
-      roundRect(ix, iy, isz, isz, 7);
+      roundRect(ix, iy, isz, isz, 6);
       ctx.clip();
       ctx.drawImage(imgObj, ix, iy, isz, isz);
       ctx.restore();
@@ -1176,20 +1181,20 @@ function drawAvatarSelect() {
       ctx.font         = `${emojiSz}px serif`;
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(ch.moods.default, cx + cardW / 2, cy + cardH * 0.36);
+      ctx.fillText(ch.moods.default, cx + cardW / 2, cy + cardH * 0.40);
       ctx.textBaseline = 'alphabetic';
     }
 
     // Name
     ctx.fillStyle = isHover ? ch.color : '#1a5c1f';
-    ctx.font      = `600 ${Math.min(12, cardW * 0.130)}px ${SANS}`;
+    ctx.font      = `600 ${Math.min(12, cardW * 0.135)}px ${SANS}`;
     ctx.textAlign = 'center';
-    ctx.fillText(ch.name, cx + cardW / 2, cy + cardH * 0.72);
+    ctx.fillText(ch.name, cx + cardW / 2, cy + cardH * 0.80);
 
     // Tap hint
     ctx.fillStyle = isHover ? ch.color : 'rgba(26,92,31,0.45)';
-    ctx.font      = `400 ${Math.min(9, cardW * 0.095)}px ${SANS}`;
-    ctx.fillText('tap to play', cx + cardW / 2, cy + cardH * 0.90);
+    ctx.font      = `400 ${Math.min(9, cardW * 0.100)}px ${SANS}`;
+    ctx.fillText('tap to play', cx + cardW / 2, cy + cardH * 0.93);
   }
 }
 
