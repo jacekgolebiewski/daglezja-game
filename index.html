@@ -127,7 +127,7 @@ function init() {
   const groundWidth = Math.ceil(W / B) + 4;  // 1 screen of safe ground
 
   // Greenhouse starting platform — fixed plants inside the glasshouse
-  platforms.push({ wx: 0, y: groundY, wb: groundWidth, decor: [
+  platforms.push({ wx: 0, y: groundY, wb: groundWidth, blockType: 0, decor: [
     { emoji: '🪴', slot: 1  },
     { emoji: '🌻', slot: 4  },
     { emoji: '🌿', slot: 7  },
@@ -162,7 +162,7 @@ function genNext() {
   const newY = Math.max(minY, Math.min(maxY, genLastY + dyB * B));
   const startX = genLastRight + gapB * B;
 
-  platforms.push({ wx: startX, y: newY, wb: widB, decor: pickDecor(widB) });
+  platforms.push({ wx: startX, y: newY, wb: widB, decor: pickDecor(widB), blockType: Math.floor(Math.random() * 3) });
   genLastRight = startX + widB * B;
   genLastY     = newY;
   genX         = genLastRight;
@@ -176,8 +176,8 @@ const DECOR_POOL = [
 ];
 function pickDecor(wb) {
   const r = Math.random();
-  if (r < 0.30) return [];                       // 30 % bare platform
-  const count = r < 0.68 ? 1 : r < 0.90 ? 2 : 3;
+  if (r < 0.12) return [];                       // 12 % bare platform
+  const count = r < 0.45 ? 1 : r < 0.78 ? 2 : 3;
   const items = [];
   const used  = new Set();
   for (let i = 0; i < count; i++) {
@@ -526,41 +526,48 @@ function drawBackground() {
   drawGlasshouse();
 }
 
+// ── Small pot helper ──────────────────────────────────────────────────────────
+function drawPot(cx, baseY, potW, potH, plantColor) {
+  const rimH = potH * 0.18;
+  const botW = potW * 0.72;
+  // Body (trapezoid)
+  ctx.fillStyle = '#c1440e';
+  ctx.beginPath();
+  ctx.moveTo(cx - potW / 2, baseY - potH + rimH);
+  ctx.lineTo(cx + potW / 2, baseY - potH + rimH);
+  ctx.lineTo(cx + botW / 2, baseY);
+  ctx.lineTo(cx - botW / 2, baseY);
+  ctx.closePath();
+  ctx.fill();
+  // Rim
+  ctx.fillStyle = '#d9541a';
+  ctx.fillRect(cx - potW / 2, baseY - potH, potW, rimH + 1);
+  // Plant blob
+  ctx.fillStyle = plantColor || '#2e8b22';
+  ctx.beginPath();
+  ctx.arc(cx, baseY - potH - potW * 0.28, potW * 0.32, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 function drawGlasshouse() {
-  const ghW   = 700;                    // world width
+  const ghW   = 380;                    // world width (smaller)
   const baseY = H - B;                  // top of ground platform
-  const ghH   = baseY * 0.68;           // wall height
+  const ghH   = baseY * 0.60;           // wall height
   const sx    = -cameraX;              // screen X of left edge
 
   if (sx + ghW < -60 || sx > W + 60) return;
 
   const frameCol = '#5c3d1a';
-  const glassCol = 'rgba(190,238,255,0.20)';
-
-  // ── Walls ──
-  // Glass fill
-  ctx.fillStyle = glassCol;
-  ctx.fillRect(sx, baseY - ghH, ghW, ghH);
-
-  // Vertical frame posts
-  const panelW = 70;
-  ctx.strokeStyle = frameCol;
-  ctx.lineWidth   = 2;
-  for (let wx = sx; wx <= sx + ghW + 1; wx += panelW) {
-    ctx.beginPath(); ctx.moveTo(wx, baseY - ghH); ctx.lineTo(wx, baseY); ctx.stroke();
-  }
-  // Horizontal rails
-  const panelH = 65;
-  for (let wy = baseY - ghH; wy <= baseY + 1; wy += panelH) {
-    ctx.beginPath(); ctx.moveTo(sx, wy); ctx.lineTo(sx + ghW, wy); ctx.stroke();
-  }
+  const panelW   = 55;
+  const panelH   = 55;
 
   // ── Peaked roof ──
   const peakX = sx + ghW / 2;
-  const peakY = baseY - ghH - H * 0.18;
+  const roofH = H * 0.14;
+  const peakY = baseY - ghH - roofH;
 
-  // Roof glass (two panels)
-  ctx.fillStyle = 'rgba(190,238,255,0.16)';
+  // Roof glass fill
+  ctx.fillStyle = 'rgba(190,238,255,0.32)';
   ctx.beginPath();
   ctx.moveTo(sx,        baseY - ghH);
   ctx.lineTo(peakX,     peakY);
@@ -568,33 +575,113 @@ function drawGlasshouse() {
   ctx.closePath();
   ctx.fill();
 
-  // Roof frame lines (rafters)
+  // Roof rafters
   ctx.strokeStyle = frameCol;
-  ctx.lineWidth   = 2;
+  ctx.lineWidth   = 1.5;
   const rafterCount = Math.floor(ghW / panelW);
   for (let r = 0; r <= rafterCount; r++) {
     const rx = sx + (r / rafterCount) * ghW;
     ctx.beginPath(); ctx.moveTo(rx, baseY - ghH); ctx.lineTo(peakX, peakY); ctx.stroke();
   }
-  // Ridge beam and eave beams
+  // Ridge beam
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(peakX, peakY);
-  ctx.lineTo(sx, baseY - ghH);
-  ctx.lineTo(sx + ghW, baseY - ghH);
-  ctx.moveTo(peakX - 1, peakY - 2); ctx.lineTo(peakX + 1, peakY + H * 0.18 + ghH);
+  ctx.moveTo(sx, baseY - ghH); ctx.lineTo(peakX, peakY); ctx.lineTo(sx + ghW, baseY - ghH);
   ctx.stroke();
 
-  // Tall door opening (centred, 2 blocks wide)
-  const doorW = B * 2.5, doorH = ghH * 0.62;
-  const doorX = sx + ghW / 2 - doorW / 2;
+  // ── Walls ──
+  ctx.fillStyle = 'rgba(190,238,255,0.36)';
+  ctx.fillRect(sx, baseY - ghH, ghW, ghH);
+
+  // Vertical frame posts
+  ctx.strokeStyle = frameCol;
+  ctx.lineWidth   = 2;
+  for (let wx = sx; wx <= sx + ghW + 1; wx += panelW) {
+    ctx.beginPath(); ctx.moveTo(wx, baseY - ghH); ctx.lineTo(wx, baseY); ctx.stroke();
+  }
+  // Horizontal rails
+  for (let wy = baseY - ghH; wy <= baseY + 1; wy += panelH) {
+    ctx.beginPath(); ctx.moveTo(sx, wy); ctx.lineTo(sx + ghW, wy); ctx.stroke();
+  }
+
+  // ── Inside accessories ──
+  // Shelving unit on left wall
+  const shelfX = sx + panelW * 0.3;
+  const shelfY = baseY - ghH * 0.55;
+  ctx.fillStyle = '#8B6914';
+  ctx.fillRect(shelfX, shelfY, 80, 6);                        // shelf board
+  ctx.fillRect(shelfX, shelfY + 38, 80, 6);                   // lower shelf
+  ctx.fillRect(shelfX, shelfY, 6, 44);                        // left leg
+  ctx.fillRect(shelfX + 74, shelfY, 6, 44);                   // right leg
+  // Pots on shelves
+  drawPot(shelfX + 18, shelfY,      22, 20, '#3cb05e');
+  drawPot(shelfX + 44, shelfY,      22, 20, '#e8a020');
+  drawPot(shelfX + 68, shelfY,      18, 16, '#2e8b22');
+  drawPot(shelfX + 22, shelfY + 38, 22, 20, '#c0392b');
+  drawPot(shelfX + 60, shelfY + 38, 22, 20, '#27ae60');
+
+  // Small fir tree inside (right side)
+  const treeX = sx + ghW * 0.72;
+  const treeBaseY = baseY;
+  const treeH = ghH * 0.52;
+  ctx.fillStyle = '#2d6e1a';
+  for (let tier = 0; tier < 4; tier++) {
+    const ty = treeBaseY - treeH * (0.28 + tier * 0.20);
+    const by = treeBaseY - treeH * (tier * 0.16);
+    const hw = (treeH * 0.28) * (1 - tier * 0.16);
+    ctx.beginPath();
+    ctx.moveTo(treeX, ty);
+    ctx.lineTo(treeX + hw, by);
+    ctx.lineTo(treeX - hw, by);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // Trunk
+  ctx.fillStyle = '#6B3A1F';
+  ctx.fillRect(treeX - 4, treeBaseY - treeH * 0.12, 8, treeH * 0.14);
+
+  // Floor pots near door entrance
+  const floorPotX = sx + ghW * 0.52;
+  drawPot(floorPotX,      baseY, 28, 26, '#e74c3c');
+  drawPot(floorPotX + 34, baseY, 24, 22, '#27ae60');
+
+  // Watering can silhouette near shelves
+  ctx.fillStyle = '#4a9fd4';
+  ctx.beginPath();
+  ctx.ellipse(shelfX + 5, baseY - 18, 14, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#4a9fd4';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(shelfX + 14, baseY - 22);
+  ctx.quadraticCurveTo(shelfX + 28, baseY - 36, shelfX + 20, baseY - 12);
+  ctx.stroke();
+
+  // ── "DAGLEZJA" sign above door ──
+  const doorW = B * 2.2, doorH = ghH * 0.58;
+  const doorX = sx + ghW - doorW - 4;
   const doorY = baseY - doorH;
-  ctx.fillStyle = 'rgba(200,245,210,0.35)';
+
+  // Sign board
+  const signW = doorW + 20, signH = 22;
+  const signX = doorX - 10;
+  const signY = doorY - signH - 6;
+  ctx.fillStyle = '#8B5E1A';
+  roundRect(signX, signY, signW, signH, 4);
+  ctx.fill();
+  ctx.fillStyle = '#f5e0a0';
+  ctx.font = `bold 11px "Georgia", serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('DAGLEZJA', signX + signW / 2, signY + signH / 2);
+  ctx.textBaseline = 'alphabetic';
+
+  // Door
+  ctx.fillStyle = 'rgba(200,245,210,0.55)';
   ctx.fillRect(doorX, doorY, doorW, doorH);
   ctx.strokeStyle = frameCol;
   ctx.lineWidth   = 2.5;
   ctx.strokeRect(doorX, doorY, doorW, doorH);
-  // Door centre bar
   ctx.beginPath();
   ctx.moveTo(doorX + doorW / 2, doorY);
   ctx.lineTo(doorX + doorW / 2, baseY);
@@ -606,34 +693,109 @@ function drawGlasshouse() {
   ctx.strokeRect(sx, baseY - ghH, ghW, ghH);
 }
 
+// ── Individual floor block renderer ──────────────────────────────────────────
+function drawFloorBlock(bx, by, type) {
+  // type 0 = grass/dirt, type 1 = stone, type 2 = wood plank
+  const GRASS_H = 7;
+  if (type === 0) {
+    // Dirt body
+    ctx.fillStyle = '#8B5E2F';
+    ctx.fillRect(bx + 1, by + GRASS_H, B - 2, B - GRASS_H - 1);
+    // Subtle dirt texture lines
+    ctx.strokeStyle = 'rgba(0,0,0,0.10)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(bx + 6,    by + GRASS_H + 7);  ctx.lineTo(bx + B - 6, by + GRASS_H + 7);
+    ctx.moveTo(bx + 4,    by + GRASS_H + 15); ctx.lineTo(bx + B - 4, by + GRASS_H + 15);
+    ctx.stroke();
+    // Grass cap
+    ctx.fillStyle = '#52a843';
+    ctx.fillRect(bx + 1, by, B - 2, GRASS_H + 2);
+    // Grass highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.30)';
+    ctx.fillRect(bx + 3, by + 1, B - 6, 3);
+    // Block edge shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.fillRect(bx + 1, by + B - 4, B - 2, 3);
+  } else if (type === 1) {
+    // Stone body
+    ctx.fillStyle = '#8a8a8a';
+    ctx.fillRect(bx + 1, by + 1, B - 2, B - 2);
+    // Stone highlight (top-left bevel)
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.fillRect(bx + 1, by + 1, B - 2, 5);
+    ctx.fillRect(bx + 1, by + 1, 5, B - 2);
+    // Stone shadow (bottom-right bevel)
+    ctx.fillStyle = 'rgba(0,0,0,0.20)';
+    ctx.fillRect(bx + 1, by + B - 5, B - 2, 4);
+    ctx.fillRect(bx + B - 5, by + 1, 4, B - 2);
+    // Crack lines
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(bx + B * 0.3, by + 4); ctx.lineTo(bx + B * 0.45, by + B * 0.55);
+    ctx.moveTo(bx + B * 0.6, by + B * 0.35); ctx.lineTo(bx + B * 0.75, by + B - 5);
+    ctx.stroke();
+  } else {
+    // Wood plank body
+    ctx.fillStyle = '#a0622a';
+    ctx.fillRect(bx + 1, by + 1, B - 2, B - 2);
+    // Plank grain lines (horizontal)
+    ctx.strokeStyle = 'rgba(0,0,0,0.13)';
+    ctx.lineWidth = 1;
+    for (let gy = by + 7; gy < by + B - 4; gy += 6) {
+      ctx.beginPath(); ctx.moveTo(bx + 2, gy); ctx.lineTo(bx + B - 2, gy); ctx.stroke();
+    }
+    // Highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.fillRect(bx + 1, by + 1, B - 2, 4);
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(bx + 1, by + B - 4, B - 2, 3);
+  }
+  // Block border
+  ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(bx + 0.5, by + 0.5, B - 1, B - 1);
+}
+
 function drawPlatforms() {
-  const SANS  = 'system-ui, -apple-system, sans-serif';
-  const GRASS = 10;   // height of grass cap
-  const BODY  = B - GRASS;
+  const SANS = 'system-ui, -apple-system, sans-serif';
 
   for (const p of platforms) {
     const sx = p.wx - cameraX;
     const pw = p.wb * B;
     if (sx + pw < -B || sx > W + B) continue;
 
-    const isChoice  = p.choiceIdx !== undefined;
-    const grassCol  = isChoice ? (p.choiceIdx === 0 ? '#22c55e' : '#0da88e') : '#5cb85c';
-    const earthCol  = isChoice ? (p.choiceIdx === 0 ? '#166534' : '#0a6b61') : '#7a5c38';
+    const isChoice = p.choiceIdx !== undefined;
 
-    // Earth body
-    ctx.fillStyle = earthCol;
-    roundRect(sx, p.y + GRASS, pw, BODY, 4);
-    ctx.fill();
-
-    // Grass cap (sits on top, rounded)
-    ctx.fillStyle = grassCol;
-    roundRect(sx, p.y, pw, GRASS + 4, 5);
-    ctx.fill();
-
-    // Bright highlight on grass
-    ctx.fillStyle = 'rgba(255,255,255,0.28)';
-    roundRect(sx + 5, p.y + 1, Math.max(0, pw - 10), 3, 2);
-    ctx.fill();
+    if (isChoice) {
+      // Choice platforms: distinct solid coloured blocks
+      const topCol  = p.choiceIdx === 0 ? '#22c55e' : '#0dd4b0';
+      const botCol  = p.choiceIdx === 0 ? '#166534' : '#0a7a6a';
+      const GRASS_H = 7;
+      for (let i = 0; i < p.wb; i++) {
+        const bx = sx + i * B;
+        if (bx + B < -B || bx > W + B) continue;
+        ctx.fillStyle = botCol;
+        ctx.fillRect(bx + 1, p.y + GRASS_H, B - 2, B - GRASS_H - 1);
+        ctx.fillStyle = topCol;
+        ctx.fillRect(bx + 1, p.y, B - 2, GRASS_H + 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        ctx.fillRect(bx + 3, p.y + 1, B - 6, 3);
+        ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(bx + 0.5, p.y + 0.5, B - 1, B - 1);
+      }
+    } else {
+      // Regular platforms: individual typed blocks
+      const bt = p.blockType !== undefined ? p.blockType : 0;
+      for (let i = 0; i < p.wb; i++) {
+        const bx = sx + i * B;
+        if (bx + B < -B || bx > W + B) continue;
+        drawFloorBlock(bx, p.y, bt);
+      }
+    }
 
     // Platform decorations (plants, tools, etc.) — only on non-choice platforms
     if (!isChoice && p.decor && p.decor.length > 0) {
@@ -649,20 +811,21 @@ function drawPlatforms() {
       ctx.textBaseline = 'alphabetic';
     }
 
-    // Answer label for choice platforms — dark pill badge above grass
+    // Answer label for choice platforms
     if (isChoice && dlg && dlg.question) {
+      const topCol    = p.choiceIdx === 0 ? '#22c55e' : '#0dd4b0';
       const platLeft  = sx;
       const platRight = sx + pw;
       if (platRight > 0 && platLeft < W) {
-        const labelX    = (Math.max(platLeft, 0) + Math.min(platRight, W)) / 2;
-        const fontSize  = Math.min(13, W * 0.031);
-        const labelTxt  = dlg.question.answers[p.choiceIdx] || '';
-        ctx.font        = `700 ${fontSize}px ${SANS}`;
-        const tw        = ctx.measureText(labelTxt).width;
+        const labelX   = (Math.max(platLeft, 0) + Math.min(platRight, W)) / 2;
+        const fontSize = Math.min(13, W * 0.031);
+        const labelTxt = dlg.question.answers[p.choiceIdx] || '';
+        ctx.font       = `700 ${fontSize}px ${SANS}`;
+        const tw       = ctx.measureText(labelTxt).width;
         const padX = 10, padY = 5, pilH = fontSize + padY * 2, pilR = pilH / 2;
         const pilX = labelX - tw / 2 - padX;
         const pilY = p.y - pilH - 8;
-        ctx.fillStyle = grassCol;
+        ctx.fillStyle = topCol;
         roundRect(pilX, pilY, tw + padX * 2, pilH, pilR);
         ctx.fill();
         ctx.fillStyle = '#ffffff';
