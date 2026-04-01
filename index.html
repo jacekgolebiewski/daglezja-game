@@ -1094,8 +1094,9 @@ function cardLayout() {
   const padX   = 10, padY = 4;
   const gap    = 4;
 
-  const maxCellW = (W - padX * 2 - gap * (cols - 1)) / cols;
-  const maxCellH = (H - titleH - padY * 2 - botH - gap * Math.max(0, rows - 1)) / rows;
+  // Size cells for full 5×3 capacity so tiles are always small (not stretched when few chars)
+  const maxCellW = (W - padX * 2 - gap * 4) / 5;
+  const maxCellH = (H - titleH - padY * 2 - botH - gap * 2) / 3;
   const cellSize = Math.min(maxCellW, maxCellH);
 
   const gridW  = cols * cellSize + gap * (cols - 1);
