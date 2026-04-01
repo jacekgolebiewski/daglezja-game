@@ -176,16 +176,19 @@ const DECOR_POOL = [
   '🛒','🪣','🪚','🔨','🌡️','🪤',
 ];
 function pickDecor(wb) {
-  const r = Math.random();
-  if (r < 0.04) return [];                       // 4 % bare platform
-  const count = r < 0.25 ? 1 : r < 0.55 ? 2 : r < 0.82 ? 3 : 4;
+  if (Math.random() < 0.08) return [];
+  // Independent count roll — feels less formulaic than a single r branch
+  const count = Math.min(wb, 1 + Math.floor(Math.random() * 4 * (0.4 + Math.random() * 0.6)));
   const items = [];
   const used  = new Set();
   for (let i = 0; i < count; i++) {
+    if (Math.random() < 0.18) continue;          // random per-item skip for uneven clusters
     let slot, tries = 0;
     do { slot = Math.floor(Math.random() * wb); tries++; } while (used.has(slot) && tries < 10);
     used.add(slot);
-    items.push({ emoji: DECOR_POOL[Math.floor(Math.random() * DECOR_POOL.length)], slot });
+    // Bake per-item scale (0.72–1.10) so size is stable across frames
+    items.push({ emoji: DECOR_POOL[Math.floor(Math.random() * DECOR_POOL.length)], slot,
+                 scale: 0.72 + Math.random() * 0.38 });
   }
   return items;
 }
@@ -809,15 +812,15 @@ function drawPlatforms() {
 
     // Platform decorations (plants, tools, etc.) — only on non-choice platforms
     if (!isChoice && p.decor && p.decor.length > 0) {
-      const decorSz = Math.min(B * 0.95, 32);
+      const baseDecorSz = Math.min(B * 0.58, 20);
       ctx.fillStyle    = '#000';   // reset alpha — drawFloorBlock leaves rgba with low opacity
-      ctx.font         = `${decorSz}px serif`;
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'bottom';
       for (const d of p.decor) {
         const dx = sx + d.slot * B + B / 2;
         if (dx < -B || dx > W + B) continue;
-        ctx.fillText(d.emoji, dx, p.y - 4);
+        ctx.font = `${Math.round(baseDecorSz * (d.scale || 1))}px serif`;
+        ctx.fillText(d.emoji, dx, p.y - 1);
       }
       ctx.textBaseline = 'alphabetic';
     }
