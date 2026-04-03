@@ -41,6 +41,7 @@ let playerCharIdx;
 let avatarHoverIdx;
 let dlg;
 let dlgBtns;
+let npc;
 let nextDialogueTrigger;
 let screenShake;
 let settingsBtn;
@@ -54,6 +55,7 @@ playerMoodTimer = 0;
 avatarHoverIdx = -1;
 dlg            = null;
 dlgBtns        = [];
+npc            = null;
 screenShake    = 0;
 settingsBtn    = null;
 
@@ -92,6 +94,7 @@ function init() {
   platforms           = [];
   dlg                 = null;
   dlgBtns             = [];
+  npc                 = null;
   screenShake         = 0;
   nextDialogueTrigger = DIALOGUE_FIRST;
 
@@ -198,6 +201,7 @@ function generateChoicePaths() {
 
 // ── Dialogue system ───────────────────────────────────────────────────────────
 function triggerDialogue() {
+  if (npc || dlg) return;
   const pool    = CHARACTERS.map((_, i) => i).filter(i => i !== playerCharIdx);
   if (!pool.length) return;
   const charIdx = pool[Math.floor(Math.random() * pool.length)];
@@ -218,8 +222,20 @@ function triggerDialogue() {
     question = QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)];
   }
 
+  // NPC starts off-screen left and approaches the player
+  npc = {
+    charIdx, question,
+    phase: 'approaching', // approaching | following | talking | reacting | leaving
+    wx:    cameraX - B * 3,
+    y:     player.y,
+    timer: 0,
+    moodKey: 'default',
+  };
+}
+
+function startDialogueSpeechBubble() {
   dlg = {
-    phase: 'typing', charIdx, question,
+    phase: 'typing', charIdx: npc.charIdx, question: npc.question,
     typeIdx: 0, typeTimer: 0,
     selectedAnswer: -1, reactTimer: 0,
     charBounce: 0, charBounceV: 0,
@@ -229,6 +245,49 @@ function triggerDialogue() {
   generateChoicePaths();
   dlgBtns = [];
   state   = 'dialogue';
+  npc.phase = 'talking';
+}
+
+// NPC shadow-player: approaches player, follows briefly, then leaves after answer
+function updateNpc(dt) {
+  if (!npc) return;
+  npc.y = player.y; // mirror player height
+  const npcScreenX    = npc.wx - cameraX;
+  const targetScreenX = PLAYER_SCR_X - B * 1.5;
+
+  if (npc.phase === 'approaching') {
+    // Move faster than camera so NPC catches up from behind
+    npc.wx += speed * 1.5 * dt;
+    if (npcScreenX >= targetScreenX) {
+      npc.wx    = cameraX + targetScreenX; // snap into position
+      npc.phase = 'following';
+      npc.timer = 0;
+    }
+  } else if (npc.phase === 'following') {
+    // Match camera speed — NPC stays at fixed screen offset behind player
+    npc.wx += speed * dt;
+    npc.timer += dt;
+    if (npc.timer >= 0.5) {
+      startDialogueSpeechBubble();
+    }
+  } else if (npc.phase === 'talking') {
+    // Lock to fixed screen position while dialogue is active
+    npc.wx = cameraX + targetScreenX;
+  } else if (npc.phase === 'reacting') {
+    // Stay visible briefly so player sees face, then begin exit
+    npc.wx = cameraX + targetScreenX;
+    npc.timer += dt;
+    if (npc.timer >= 0.4) {
+      npc.phase = 'leaving';
+      npc.timer = 0;
+    }
+  } else if (npc.phase === 'leaving') {
+    // Slow down — camera pulls away, NPC drifts off left naturally
+    npc.wx += speed * 0.25 * dt;
+    if (npc.wx - cameraX < -B * 4) {
+      npc = null;
+    }
+  }
 }
 
 function updateDialogue(dt) {
@@ -264,6 +323,7 @@ function updateDialogue(dt) {
       platforms.forEach(p => { delete p.choiceIdx; });
       state = 'playing';
       dlg   = null;
+      if (npc) { npc.phase = 'reacting'; npc.timer = 0; }
     }
   }
 }
@@ -273,6 +333,9 @@ function answerDialogue(idx) {
   dlg.selectedAnswer = idx;
   dlg.phase          = 'reacting';
   dlg.reactTimer     = 0;
+
+  // NPC shows happy or angry face immediately on answer
+  if (npc) npc.moodKey = idx === dlg.question.correct ? 'happy' : 'angry';
 
   if (idx === dlg.question.correct) {
     speedRampTimer = Infinity;
@@ -356,6 +419,8 @@ function update(dt) {
     }
   }
 
+  updateNpc(dt);
+
   score = Math.floor(cameraX / B);
   if (score > best) best = score;
 
@@ -365,7 +430,7 @@ function update(dt) {
 
   if (score >= nextDialogueTrigger) {
     nextDialogueTrigger = score + DIALOGUE_INTERVAL;
-    triggerDialogue();
+    if (!npc && !dlg) triggerDialogue();
     return;
   }
 
@@ -393,6 +458,7 @@ function draw() {
       );
     }
     drawPlatforms();
+    drawNpc();
     drawPlayer();
     drawHUD();
     if (screenShake > 0) ctx.restore();
@@ -787,6 +853,33 @@ function drawPlayer() {
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(sx + player.w - 11, player.y + 6,  5, 4);
     ctx.fillRect(sx + player.w - 11, player.y + 15, 5, 4);
+  }
+}
+
+function drawNpc() {
+  if (!npc) return;
+  const sx = npc.wx - cameraX;
+  if (sx + B < 0 || sx > W) return;
+  const ch = CHARACTERS[npc.charIdx];
+
+  ctx.fillStyle = ch ? ch.color : '#60a5fa';
+  roundRect(sx, npc.y, B, B, 8);
+  ctx.fill();
+
+  const imgObj = ch && (ch.imgs[npc.moodKey] || ch.imgs.default);
+  if (imgObj && imgObj.complete && imgObj.naturalWidth) {
+    ctx.save();
+    roundRect(sx, npc.y, B, B, 3);
+    ctx.clip();
+    ctx.drawImage(imgObj, sx, npc.y, B, B);
+    ctx.restore();
+  } else if (ch) {
+    const emojiSz = Math.floor(B * 0.82);
+    ctx.font         = `${emojiSz}px serif`;
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(ch.moods[npc.moodKey] || ch.moods.default, sx + B / 2, npc.y + B / 2);
+    ctx.textBaseline = 'alphabetic';
   }
 }
 
