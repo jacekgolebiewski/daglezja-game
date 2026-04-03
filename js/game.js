@@ -204,25 +204,20 @@ function generateChoicePaths() {
 // ── Dialogue system ───────────────────────────────────────────────────────────
 function triggerDialogue() {
   if (npc || dlg) return;
-  const pool    = CHARACTERS.map((_, i) => i).filter(i => i !== playerCharIdx);
+  const pool    = CHARACTERS.map((_, i) => i).filter(i => i !== playerCharIdx && CHARACTERS[i].interactions && CHARACTERS[i].interactions.length > 0);
   if (!pool.length) return;
   const charIdx = pool[Math.floor(Math.random() * pool.length)];
   const ch      = CHARACTERS[charIdx];
 
-  let question;
-  if (ch.interactions && ch.interactions.length > 0) {
-    const iact = ch.interactions[Math.floor(Math.random() * ch.interactions.length)];
-    const flip = Math.random() < 0.5;
-    question = {
-      text:      iact.text,
-      answers:   flip ? [iact.correct, iact.wrong] : [iact.wrong, iact.correct],
-      correct:   flip ? 0 : 1,
-      happyLine: iact.correct,
-      wrongLine: iact.wrong,
-    };
-  } else {
-    question = QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)];
-  }
+  const iact = ch.interactions[Math.floor(Math.random() * ch.interactions.length)];
+  const flip = Math.random() < 0.5;
+  const question = {
+    text:      iact.text,
+    answers:   flip ? [iact.correct, iact.wrong] : [iact.wrong, iact.correct],
+    correct:   flip ? 0 : 1,
+    happyLine: iact.correct,
+    wrongLine: iact.wrong,
+  };
 
   // NPC starts off-screen left and approaches the player
   npc = {
