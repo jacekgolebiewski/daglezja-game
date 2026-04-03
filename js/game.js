@@ -42,6 +42,7 @@ let avatarHoverIdx;
 let dlg;
 let dlgBtns;
 let npc;
+let playerPathHistory;
 let nextDialogueTrigger;
 let screenShake;
 let settingsBtn;
@@ -95,6 +96,7 @@ function init() {
   dlg                 = null;
   dlgBtns             = [];
   npc                 = null;
+  playerPathHistory   = [];
   screenShake         = 0;
   nextDialogueTrigger = DIALOGUE_FIRST;
 
@@ -251,7 +253,23 @@ function startDialogueSpeechBubble() {
 // NPC shadow-player: approaches player, follows briefly, then leaves after answer
 function updateNpc(dt) {
   if (!npc) return;
-  npc.y = player.y; // mirror player height
+
+  // Follow the player's exact path: look up the Y the player had when at npc.wx
+  const hist = playerPathHistory;
+  if (hist.length > 0 && npc.wx <= hist[hist.length - 1].wx) {
+    let lo = 0, hi = hist.length - 1;
+    while (lo < hi - 1) {
+      const mid = (lo + hi) >> 1;
+      if (hist[mid].wx <= npc.wx) lo = mid; else hi = mid;
+    }
+    const a = hist[lo], b = hist[Math.min(lo + 1, hist.length - 1)];
+    const denom = b.wx - a.wx;
+    const t = denom > 0 ? Math.max(0, Math.min(1, (npc.wx - a.wx) / denom)) : 0;
+    npc.y = a.y + (b.y - a.y) * t;
+  } else {
+    npc.y = player.y; // fallback before enough history is recorded
+  }
+
   const npcScreenX    = npc.wx - cameraX;
   const targetScreenX = PLAYER_SCR_X - B * 1.5;
 
@@ -418,6 +436,10 @@ function update(dt) {
       }
     }
   }
+
+  // Record player's path so NPC can follow it with spatial delay
+  playerPathHistory.push({ wx: player.wx, y: player.y });
+  if (playerPathHistory.length > 300) playerPathHistory.shift();
 
   updateNpc(dt);
 
