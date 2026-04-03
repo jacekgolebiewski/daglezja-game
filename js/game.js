@@ -1064,7 +1064,7 @@ function drawCover() {
   ctx.fillStyle = 'rgba(26,92,31,0.35)';
   ctx.font      = `400 ${Math.min(10, W * 0.025)}px ${SANS}`;
   ctx.textAlign = 'right';
-  ctx.fillText(VERSION, W - 12, H - 10);
+  ctx.fillText(`${VERSION} (${VERSION_DATE})`, W - 12, H - 10);
 
   const sLinkTxt = '⚙ Settings';
   const sLinkSz  = Math.min(11, W * 0.028);
