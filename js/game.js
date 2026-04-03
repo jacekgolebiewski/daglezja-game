@@ -48,6 +48,11 @@ let screenShake;
 let settingsBtn;
 let playerMoodKey;
 let playerMoodTimer;
+let paused = false;
+let pauseBtn = null;
+let pauseOverlayBtns = null;
+let deadBtns = null;
+let avatarBackBtn = null;
 
 best           = 0;
 playerCharIdx  = -1;
@@ -485,6 +490,7 @@ function draw() {
   if (state === 'avatar_select') drawAvatarSelect();
   if (state === 'dead')          drawDead();
   if (state === 'dialogue')      drawDialogue();
+  if (paused)                    drawPauseOverlay();
 }
 
 function drawBackground() {
@@ -903,6 +909,7 @@ function drawNpc() {
 function drawHUD() {
   const SANS = 'system-ui, -apple-system, sans-serif';
 
+  // Score — top right
   const scoreW = 100, scoreH = 30, scoreR = 15;
   const scx = W - scoreW - 12, scy = 10;
   ctx.fillStyle = 'rgba(255,255,255,0.88)';
@@ -915,6 +922,7 @@ function drawHUD() {
   ctx.fillText(score + ' m', scx + scoreW / 2, scy + scoreH / 2);
   ctx.textBaseline = 'alphabetic';
 
+  // Speed bar — top left
   const pct  = (speed - SPEED_START) / (SPEED_MAX - SPEED_START);
   const bw = 88, bh = 30, bx = 12, by = 10, br = 15;
   ctx.fillStyle = 'rgba(255,255,255,0.88)';
@@ -934,6 +942,81 @@ function drawHUD() {
   ctx.textBaseline = 'middle';
   ctx.fillText('SPEED', bx + bw / 2, by + bh / 2);
   ctx.textBaseline = 'alphabetic';
+
+  // Pause button — top centre
+  const pbSz = 30, pbX = W / 2 - pbSz / 2, pbY = 10;
+  ctx.fillStyle = 'rgba(255,255,255,0.88)';
+  roundRect(pbX, pbY, pbSz, pbSz, pbSz / 2);
+  ctx.fill();
+  ctx.fillStyle = '#1a5c1f';
+  const barW = 4, barH = 12;
+  const barGap = 5;
+  const b1x = pbX + pbSz / 2 - barGap / 2 - barW;
+  const b2x = pbX + pbSz / 2 + barGap / 2;
+  const bBarY = pbY + (pbSz - barH) / 2;
+  ctx.fillRect(b1x, bBarY, barW, barH);
+  ctx.fillRect(b2x, bBarY, barW, barH);
+  pauseBtn = { x: pbX, y: pbY, w: pbSz, h: pbSz };
+}
+
+function drawPauseOverlay() {
+  const SANS = 'system-ui, -apple-system, sans-serif';
+
+  ctx.fillStyle = 'rgba(0,0,0,0.52)';
+  ctx.fillRect(0, 0, W, H);
+
+  const cardW = Math.min(280, W * 0.58), cardH = Math.min(210, H * 0.52);
+  const cardX = W / 2 - cardW / 2, cardY = H / 2 - cardH / 2;
+  ctx.fillStyle = 'rgba(255,255,255,0.97)';
+  roundRect(cardX, cardY, cardW, cardH, 20);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(26,92,31,0.12)';
+  ctx.lineWidth = 1;
+  roundRect(cardX, cardY, cardW, cardH, 20);
+  ctx.stroke();
+
+  ctx.fillStyle    = '#1a5c1f';
+  ctx.font         = `700 ${Math.min(22, W * 0.055)}px ${SANS}`;
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('PAUSED', W / 2, cardY + cardH * 0.25);
+  ctx.textBaseline = 'alphabetic';
+
+  const btnW = cardW * 0.72, btnH = 42;
+  const btnX = W / 2 - btnW / 2;
+
+  // Resume button (green)
+  const resumeY = cardY + cardH * 0.42;
+  ctx.fillStyle = '#22c55e';
+  roundRect(btnX, resumeY, btnW, btnH, btnH / 2);
+  ctx.fill();
+  ctx.fillStyle    = '#fff';
+  ctx.font         = `700 ${Math.min(15, W * 0.038)}px ${SANS}`;
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('▶  Resume', W / 2, resumeY + btnH / 2);
+  ctx.textBaseline = 'alphabetic';
+
+  // Home button (outlined)
+  const homeY = resumeY + btnH + 12;
+  ctx.fillStyle = 'rgba(26,92,31,0.07)';
+  roundRect(btnX, homeY, btnW, btnH, btnH / 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(26,92,31,0.35)';
+  ctx.lineWidth   = 1.5;
+  roundRect(btnX, homeY, btnW, btnH, btnH / 2);
+  ctx.stroke();
+  ctx.fillStyle    = '#1a5c1f';
+  ctx.font         = `600 ${Math.min(15, W * 0.038)}px ${SANS}`;
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('⌂  Home', W / 2, homeY + btnH / 2);
+  ctx.textBaseline = 'alphabetic';
+
+  pauseOverlayBtns = {
+    resume: { x: btnX, y: resumeY, w: btnW, h: btnH },
+    home:   { x: btnX, y: homeY,   w: btnW, h: btnH },
+  };
 }
 
 function drawFirTree(cx, topY, treeH, treeW, color) {
@@ -1058,17 +1141,25 @@ function drawCover() {
 
   ctx.fillStyle = 'rgba(26,92,31,0.35)';
   ctx.font      = `400 ${Math.min(10, W * 0.025)}px ${SANS}`;
-  ctx.textAlign = 'right';
-  ctx.fillText(`${VERSION} (${VERSION_DATE})`, W - 12, H - 10);
+  ctx.textAlign = 'center';
+  ctx.fillText(`${VERSION} · ${VERSION_DATE}`, W / 2, H - 10);
 
-  const sLinkTxt = '⚙ Settings';
-  const sLinkSz  = Math.min(11, W * 0.028);
-  ctx.font       = `400 ${sLinkSz}px ${SANS}`;
-  ctx.textAlign  = 'left';
-  ctx.fillStyle  = 'rgba(26,92,31,0.45)';
-  ctx.fillText(sLinkTxt, 12, H - 10);
-  const sLinkW   = ctx.measureText(sLinkTxt).width;
-  settingsBtn    = { x: 8, y: H - sLinkSz - 18, w: sLinkW + 8, h: sLinkSz + 14 };
+  // Settings button — bottom-left pill
+  const sBtnW = 110, sBtnH = 34, sBtnX = 14, sBtnY = H - sBtnH - 14;
+  ctx.fillStyle = 'rgba(255,255,255,0.82)';
+  roundRect(sBtnX, sBtnY, sBtnW, sBtnH, sBtnH / 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(26,92,31,0.22)';
+  ctx.lineWidth   = 1;
+  roundRect(sBtnX, sBtnY, sBtnW, sBtnH, sBtnH / 2);
+  ctx.stroke();
+  ctx.fillStyle    = '#1a5c1f';
+  ctx.font         = `600 ${Math.min(13, W * 0.032)}px ${SANS}`;
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('⚙  Settings', sBtnX + sBtnW / 2, sBtnY + sBtnH / 2);
+  ctx.textBaseline = 'alphabetic';
+  settingsBtn = { x: sBtnX, y: sBtnY, w: sBtnW, h: sBtnH };
 }
 
 function cardLayout() {
@@ -1167,6 +1258,23 @@ function drawAvatarSelect() {
     ctx.font      = `400 ${Math.min(9, cardW * 0.100)}px ${SANS}`;
     ctx.fillText('tap to play', cx + cardW / 2, cy + cardH * 0.93);
   }
+
+  // Back button — top-left
+  const bkW = 90, bkH = 32, bkX = 14, bkY = 14;
+  ctx.fillStyle = 'rgba(255,255,255,0.82)';
+  roundRect(bkX, bkY, bkW, bkH, bkH / 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(26,92,31,0.22)';
+  ctx.lineWidth   = 1;
+  roundRect(bkX, bkY, bkW, bkH, bkH / 2);
+  ctx.stroke();
+  ctx.fillStyle    = '#1a5c1f';
+  ctx.font         = `600 ${Math.min(13, W * 0.032)}px ${SANS}`;
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('← Back', bkX + bkW / 2, bkY + bkH / 2);
+  ctx.textBaseline = 'alphabetic';
+  avatarBackBtn = { x: bkX, y: bkY, w: bkW, h: bkH };
 }
 
 function wrapText(text, cx, y, maxW, lineH) {
@@ -1256,9 +1364,11 @@ function drawDead() {
   ctx.fillStyle = 'rgba(200,237,208,0.72)';
   ctx.fillRect(0, 0, W, H);
 
-  const cardW = Math.min(320, W * 0.72), cardH = Math.min(190, H * 0.52);
-  const cardX = W / 2 - cardW / 2,       cardY = H / 2 - cardH / 2;
-  ctx.fillStyle = 'rgba(255,255,255,0.94)';
+  const isNewBest = score > 0 && score >= best;
+  const cardW = Math.min(320, W * 0.72);
+  const cardH = Math.min(isNewBest ? 230 : 210, H * 0.58);
+  const cardX = W / 2 - cardW / 2, cardY = H / 2 - cardH / 2;
+  ctx.fillStyle = 'rgba(255,255,255,0.96)';
   roundRect(cardX, cardY, cardW, cardH, 20);
   ctx.fill();
   ctx.strokeStyle = 'rgba(26,92,31,0.14)';
@@ -1266,26 +1376,58 @@ function drawDead() {
   roundRect(cardX, cardY, cardW, cardH, 20);
   ctx.stroke();
 
-  const isNewBest = score > 0 && score >= best;
   ctx.textAlign = 'center';
 
-  ctx.fillStyle = 'rgba(26,92,31,0.45)';
-  ctx.font      = `500 ${Math.min(12, W * 0.030)}px ${SANS}`;
-  ctx.fillText('game over', W / 2, cardY + cardH * 0.24);
+  ctx.fillStyle    = 'rgba(26,92,31,0.45)';
+  ctx.font         = `500 ${Math.min(12, W * 0.030)}px ${SANS}`;
+  ctx.textBaseline = 'middle';
+  ctx.fillText('game over', W / 2, cardY + cardH * 0.18);
 
   ctx.fillStyle = '#1a5c1f';
   ctx.font      = `700 ${Math.min(52, W * 0.11)}px ${SANS}`;
-  ctx.fillText(score + ' m', W / 2, cardY + cardH * 0.56);
+  ctx.fillText(score + ' m', W / 2, cardY + cardH * 0.42);
 
   if (isNewBest) {
     ctx.fillStyle = '#b45309';
     ctx.font      = `600 ${Math.min(13, W * 0.032)}px ${SANS}`;
-    ctx.fillText('New best!', W / 2, cardY + cardH * 0.72);
+    ctx.fillText('✦ New best!', W / 2, cardY + cardH * 0.57);
   }
+  ctx.textBaseline = 'alphabetic';
 
-  ctx.fillStyle = 'rgba(26,92,31,0.45)';
-  ctx.font      = `400 ${Math.min(12, W * 0.030)}px ${SANS}`;
-  ctx.fillText('tap to retry', W / 2, cardY + cardH * 0.90);
+  // Retry button (green)
+  const btnW = cardW * 0.72, btnH = 38;
+  const btnX = W / 2 - btnW / 2;
+  const retryY = cardY + cardH * (isNewBest ? 0.66 : 0.62);
+  ctx.fillStyle = '#22c55e';
+  roundRect(btnX, retryY, btnW, btnH, btnH / 2);
+  ctx.fill();
+  ctx.fillStyle    = '#fff';
+  ctx.font         = `700 ${Math.min(14, W * 0.035)}px ${SANS}`;
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Play Again', W / 2, retryY + btnH / 2);
+  ctx.textBaseline = 'alphabetic';
+
+  // Home button (outlined)
+  const homeY = retryY + btnH + 10;
+  ctx.fillStyle = 'rgba(26,92,31,0.07)';
+  roundRect(btnX, homeY, btnW, btnH, btnH / 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(26,92,31,0.30)';
+  ctx.lineWidth   = 1.5;
+  roundRect(btnX, homeY, btnW, btnH, btnH / 2);
+  ctx.stroke();
+  ctx.fillStyle    = '#1a5c1f';
+  ctx.font         = `600 ${Math.min(14, W * 0.035)}px ${SANS}`;
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('⌂  Home', W / 2, homeY + btnH / 2);
+  ctx.textBaseline = 'alphabetic';
+
+  deadBtns = {
+    retry: { x: btnX, y: retryY, w: btnW, h: btnH },
+    home:  { x: btnX, y: homeY,  w: btnW, h: btnH },
+  };
 }
 
 // ── Utility ───────────────────────────────────────────────────────────────────
@@ -1304,33 +1446,70 @@ function roundRect(x, y, w, h, r) {
 }
 
 // ── Input ─────────────────────────────────────────────────────────────────────
+function inBtn(btn, px, py) {
+  return btn && px >= btn.x && px <= btn.x + btn.w && py >= btn.y && py <= btn.y + btn.h;
+}
+
+function togglePause() {
+  if (state !== 'playing' && state !== 'dialogue') return;
+  paused = !paused;
+  if (!paused) pauseOverlayBtns = null;
+}
+
+function goHome() {
+  paused = false;
+  pauseOverlayBtns = null;
+  deadBtns = null;
+  state = 'cover';
+}
+
 function press(px, py) {
   holding = true;
 
-  if (state === 'cover' && settingsBtn &&
-      px >= settingsBtn.x && px <= settingsBtn.x + settingsBtn.w &&
-      py >= settingsBtn.y && py <= settingsBtn.y + settingsBtn.h) {
-    window.location.href = 'settings.html';
+  // ── Pause overlay (blocks everything else) ──────────────────────────────────
+  if (paused) {
+    if (pauseOverlayBtns) {
+      if (inBtn(pauseOverlayBtns.resume, px, py)) { togglePause(); return; }
+      if (inBtn(pauseOverlayBtns.home,   px, py)) { goHome(); return; }
+    }
+    return; // tap outside overlay does nothing
+  }
+
+  // ── Cover ────────────────────────────────────────────────────────────────────
+  if (state === 'cover') {
+    if (inBtn(settingsBtn, px, py)) { window.location.href = 'settings.html'; return; }
+    state = 'avatar_select';
     return;
   }
 
-  if (state === 'cover') { state = 'avatar_select'; return; }
-
+  // ── Avatar select ────────────────────────────────────────────────────────────
   if (state === 'avatar_select') {
+    if (inBtn(avatarBackBtn, px, py)) { state = 'cover'; return; }
     const idx = getCardAtPoint(px, py);
     if (idx >= 0) { playerCharIdx = idx; init(); state = 'playing'; lastTime = 0; }
     return;
   }
 
+  // ── Dead screen ──────────────────────────────────────────────────────────────
+  if (state === 'dead') {
+    if (deadBtns) {
+      if (inBtn(deadBtns.home, px, py)) { goHome(); return; }
+    }
+    // tap anywhere else = retry
+    init(); state = 'playing'; lastTime = 0;
+    return;
+  }
+
+  // ── Dialogue ─────────────────────────────────────────────────────────────────
   if (state === 'dialogue') {
     if (dlg.phase === 'typing') { dlg.typeIdx = dlg.question.text.length; dlg.phase = 'choices'; }
     if (player.onGround) { player.vy = JUMP_VY; player.onGround = false; }
     return;
   }
 
-  if (state === 'dead') { init(); state = 'playing'; lastTime = 0; return; }
-
+  // ── Playing ──────────────────────────────────────────────────────────────────
   if (state === 'playing') {
+    if (inBtn(pauseBtn, px, py)) { togglePause(); return; }
     if (player.onGround) { player.vy = JUMP_VY; player.onGround = false; jumpBuffer = 0; }
     else                 { jumpBuffer = JUMP_BUFFER_SEC; }
   }
@@ -1343,6 +1522,7 @@ C.addEventListener('pointerup',     release);
 C.addEventListener('pointercancel', release);
 
 document.addEventListener('keydown', e => {
+  if (e.code === 'Escape' || e.code === 'KeyP') { e.preventDefault(); togglePause(); return; }
   if (['Space', 'ArrowUp', 'KeyW'].includes(e.code)) { e.preventDefault(); press(-1, -1); }
 });
 document.addEventListener('keyup', e => {
@@ -1354,8 +1534,8 @@ function loop(ts) {
   requestAnimationFrame(loop);
   const dt = lastTime === 0 ? 0 : Math.min((ts - lastTime) / 1000, 0.05);
   lastTime = ts;
-  if (state === 'playing' || state === 'dialogue') update(dt);
-  if (state === 'dialogue') updateDialogue(dt);
+  if (!paused && (state === 'playing' || state === 'dialogue')) update(dt);
+  if (!paused && state === 'dialogue') updateDialogue(dt);
   if (screenShake > 0.4) screenShake *= 1 - Math.min(1, dt * 8);
   else                   screenShake = 0;
   draw();
