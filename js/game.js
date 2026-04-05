@@ -36,7 +36,7 @@ let player, cameraX, platforms;
 let speed, speedRampTimer, speedTimer, score, best;
 let holding, lastTime, jumpBuffer = 0;
 const JUMP_BUFFER_SEC = 0.14;
-let genX, genLastY, genLastRight;
+let genX, genLastY, genLastRight, genKind, genKindLeft;
 let playerCharIdx;
 let avatarHoverIdx;
 let dlg;
@@ -119,6 +119,8 @@ function init() {
   genX         = groundWidth * B;
   genLastY     = groundY;
   genLastRight = genX;
+  genKind      = 0;  // start with grass (matches ground platform)
+  genKindLeft  = 6 + Math.floor(Math.random() * 5);
 
   player = {
     wx: cameraX + PLAYER_SCR_X,
@@ -142,8 +144,14 @@ function genNext() {
   const newY = Math.max(minY, Math.min(maxY, genLastY + dyB * B));
   const startX = genLastRight + gapB * B;
 
-  const kind = Math.floor(Math.random() * 5);
-  platforms.push({ wx: startX, y: newY, wb: widB, decor: pickDecor(widB, kind), blockType: kind });
+  if (--genKindLeft <= 0) {
+    // Pick a new kind different from the current one
+    let next;
+    do { next = Math.floor(Math.random() * 5); } while (next === genKind);
+    genKind     = next;
+    genKindLeft = 6 + Math.floor(Math.random() * 6); // 6-11 platforms per biome run
+  }
+  platforms.push({ wx: startX, y: newY, wb: widB, decor: pickDecor(widB, genKind), blockType: genKind });
   genLastRight = startX + widB * B;
   genLastY     = newY;
   genX         = genLastRight;
