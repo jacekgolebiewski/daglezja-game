@@ -1,4 +1,4 @@
-// ── Firebase config ───────────────────────────────────────────────────────────
+// ── Firebase config ────────────────────────────────────────────────────────────
 const FIREBASE_CONFIG = {
   apiKey:            'AIzaSyA2I0adFWW2FDNjCciyZc-_N81wiB94bMc',
   authDomain:        'daglezja-game.firebaseapp.com',
@@ -11,6 +11,16 @@ const FIREBASE_CONFIG = {
 let charEditIdx  = -1;
 let cropCallback = null;
 let _fbStorage   = null;
+let _saveTimer   = null;
+
+// ── New character palette ─────────────────────────────────────────────────────
+const NEW_CHAR_PALETTE = [
+  { color: '#ff9500', moods: { default: '⭐', happy: '🌟', angry: '💥', sad: '😞' } },
+  { color: '#ff2d55', moods: { default: '🦊', happy: '🎉', angry: '🔥', sad: '💔' } },
+  { color: '#5856d6', moods: { default: '👾', happy: '🤩', angry: '😈', sad: '😔' } },
+  { color: '#34aadc', moods: { default: '🐬', happy: '🥰', angry: '😤', sad: '😢' } },
+  { color: '#4cd964', moods: { default: '🐸', happy: '😄', angry: '😠', sad: '😭' } },
+];
 
 // ── localStorage persistence ──────────────────────────────────────────────────
 function saveCharactersToStorage() {
@@ -22,6 +32,34 @@ function saveCharactersToStorage() {
     interactions: ch.interactions || [],
   }));
   localStorage.setItem(CHAR_STORAGE_KEY, JSON.stringify(data));
+  scheduleSave();
+}
+
+// ── Sync status pill ──────────────────────────────────────────────────────────
+function setSyncPill(state, text) {
+  ['list-sync-pill', 'edit-sync-pill'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className  = 'sync-pill' + (state ? ' ' + state : '');
+    el.textContent = text;
+  });
+}
+
+// ── Debounced Firebase push ───────────────────────────────────────────────────
+function scheduleSave() {
+  if (!_fbStorage) return;
+  clearTimeout(_saveTimer);
+  setSyncPill('saving', 'Saving…');
+  _saveTimer = setTimeout(async () => {
+    try {
+      await firebaseSaveAll();
+      setSyncPill('saved', '✓ Saved');
+      setTimeout(() => setSyncPill('', ''), 3000);
+    } catch(e) {
+      setSyncPill('error', '⚠ Failed');
+      console.error('Firebase save failed:', e);
+    }
+  }, 2000);
 }
 
 // ── View navigation ───────────────────────────────────────────────────────────
@@ -42,7 +80,6 @@ document.getElementById('btn-back-to-chars').addEventListener('click', () => {
 });
 document.getElementById('s-characters').addEventListener('click', () => {
   showView('view-char-list');
-  renderSyncSection();
   renderCharList();
 });
 document.getElementById('s-gameplay').addEventListener('click', () => {
@@ -101,66 +138,72 @@ function renderCharList() {
   const container = document.getElementById('char-list-items');
   container.innerHTML = '';
 
-  const section = document.createElement('div');
-  section.style.padding = '8px 16px 16px';
-
-  const label = document.createElement('p');
-  label.className   = 's-section-label';
-  label.textContent = 'Game Characters';
-  section.appendChild(label);
-
-  const card = document.createElement('div');
-  card.className = 's-card';
+  const wrap = document.createElement('div');
+  wrap.className = 'char-list-wrap';
 
   CHARACTERS.forEach((ch, i) => {
-    const row = document.createElement('div');
-    row.className     = 's-row s-row-tappable';
-    row.style.cssText = 'gap:10px';
+    const card = document.createElement('div');
+    card.className = 'char-card';
 
-    const avatarWrap = document.createElement('div');
-    avatarWrap.className = 'char-avatar-wrap';
+    const avatar = document.createElement('div');
+    avatar.className = 'char-avatar';
+    avatar.style.background = ch.color + '22';
     if (ch.imgs.default && ch.imgs.default.complete && ch.imgs.default.naturalWidth) {
       const img = document.createElement('img');
       img.src = ch.imgs.default.src;
-      avatarWrap.appendChild(img);
+      avatar.appendChild(img);
     } else {
-      avatarWrap.textContent = ch.moods.default;
+      avatar.textContent = ch.moods.default;
     }
 
     const info = document.createElement('div');
     info.className = 'char-info';
-    info.innerHTML = `<div class="char-name" style="color:${ch.color}">${ch.name}</div>`
-                   + `<div class="char-sub">${Object.keys(ch._imgData).length} / 4 moods customised</div>`;
+
+    const nameEl = document.createElement('div');
+    nameEl.className   = 'char-name';
+    nameEl.style.color = ch.color;
+    nameEl.textContent = ch.name;
+
+    const subEl = document.createElement('div');
+    subEl.className = 'char-sub';
+    const imgCount  = Object.keys(ch._imgData || {}).length;
+    const iactCount = (ch.interactions || []).length;
+    subEl.textContent = `${iactCount} interaction${iactCount !== 1 ? 's' : ''} · ${imgCount}/4 mood images`;
+
+    info.appendChild(nameEl);
+    info.appendChild(subEl);
+
+    const right = document.createElement('div');
+    right.className = 'char-card-right';
+
+    if (CHARACTERS.length > 1) {
+      const delBtn = document.createElement('button');
+      delBtn.className   = 'char-del-btn';
+      delBtn.textContent = '×';
+      delBtn.title       = 'Delete character';
+      delBtn.addEventListener('click', e => { e.stopPropagation(); removeCharacter(i); });
+      right.appendChild(delBtn);
+    }
 
     const arrow = document.createElement('span');
     arrow.className   = 'char-arrow';
     arrow.textContent = '›';
+    right.appendChild(arrow);
 
-    row.appendChild(avatarWrap);
-    row.appendChild(info);
-
-    if (CHARACTERS.length > 1) {
-      const delBtn = document.createElement('button');
-      delBtn.className   = 'char-row-delete';
-      delBtn.textContent = '×';
-      delBtn.title       = 'Delete character';
-      delBtn.addEventListener('click', e => { e.stopPropagation(); removeCharacter(i); });
-      row.appendChild(delBtn);
-    }
-
-    row.appendChild(arrow);
-    row.addEventListener('click', () => openCharEditor(i));
-    card.appendChild(row);
+    card.appendChild(avatar);
+    card.appendChild(info);
+    card.appendChild(right);
+    card.addEventListener('click', () => openCharEditor(i));
+    wrap.appendChild(card);
   });
-
-  section.appendChild(card);
 
   const addBtn = document.createElement('button');
   addBtn.className = 'btn-add-char';
   addBtn.innerHTML = '<span style="font-size:20px;line-height:1">+</span> Add Character';
   addBtn.addEventListener('click', addCharacter);
-  container.appendChild(section);
-  container.appendChild(addBtn);
+  wrap.appendChild(addBtn);
+
+  container.appendChild(wrap);
 }
 
 // ── Character editor ──────────────────────────────────────────────────────────
@@ -171,17 +214,40 @@ const MOOD_META = {
   sad:     { label: 'Sad',     hint: 'Game over'        },
 };
 
+function renderHeroAvatar(ch) {
+  const hero = document.getElementById('char-hero-avatar');
+  hero.innerHTML = '';
+  hero.style.background = ch.color + '33';
+  if (ch.imgs.default && ch.imgs.default.complete && ch.imgs.default.naturalWidth) {
+    const img = document.createElement('img');
+    img.src = ch.imgs.default.src;
+    hero.appendChild(img);
+  } else {
+    hero.textContent = ch.moods.default;
+  }
+  hero.onclick = () => pickImage('default');
+}
+
 function openCharEditor(idx) {
   charEditIdx = idx;
   const ch    = CHARACTERS[idx];
-  document.getElementById('char-title').textContent        = ch.name;
-  document.getElementById('char-edit-name').value          = ch.name;
+  document.getElementById('char-title').textContent       = ch.name;
+  document.getElementById('char-edit-name').value         = ch.name;
   document.getElementById('char-delete-btn').style.display = CHARACTERS.length > 1 ? 'block' : 'none';
+  renderHeroAvatar(ch);
   renderMoodGrid(ch);
-  closeIactForm();
   renderInteractionsList();
   showView('view-char-edit');
 }
+
+// Name auto-saves on blur
+document.getElementById('char-edit-name').addEventListener('blur', () => {
+  const name = document.getElementById('char-edit-name').value.trim();
+  if (!name || charEditIdx < 0) return;
+  CHARACTERS[charEditIdx].name = name;
+  document.getElementById('char-title').textContent = name;
+  saveCharactersToStorage();
+});
 
 function renderMoodGrid(ch) {
   const grid = document.getElementById('mood-grid');
@@ -204,33 +270,17 @@ function renderMoodGrid(ch) {
   });
 }
 
-document.getElementById('char-save-btn').addEventListener('click', () => {
-  const name = document.getElementById('char-edit-name').value.trim();
-  if (!name) return;
-  CHARACTERS[charEditIdx].name = name;
-  saveCharactersToStorage();
-  showView('view-char-list');
-  renderCharList();
-});
-
 document.getElementById('char-delete-btn').addEventListener('click', () => {
   removeCharacter(charEditIdx);
 });
 
 // ── Add / Remove characters ───────────────────────────────────────────────────
-const NEW_CHAR_PALETTE = [
-  { color: '#ff9500', moods: { default: '⭐', happy: '🌟', angry: '💥', sad: '😞' } },
-  { color: '#ff2d55', moods: { default: '🦊', happy: '🎉', angry: '🔥', sad: '💔' } },
-  { color: '#5856d6', moods: { default: '👾', happy: '🤩', angry: '😈', sad: '😔' } },
-  { color: '#34aadc', moods: { default: '🐬', happy: '🥰', angry: '😤', sad: '😢' } },
-  { color: '#4cd964', moods: { default: '🐸', happy: '😄', angry: '😠', sad: '😭' } },
-];
-
 function addCharacter() {
   const template = NEW_CHAR_PALETTE[CHARACTERS.length % NEW_CHAR_PALETTE.length];
   CHARACTERS.push({
     name: 'New Character', color: template.color,
     moods: { ...template.moods }, imgs: {}, _imgData: {},
+    interactions: [],
   });
   saveCharactersToStorage();
   openCharEditor(CHARACTERS.length - 1);
@@ -238,6 +288,7 @@ function addCharacter() {
 
 function removeCharacter(idx) {
   if (CHARACTERS.length <= 1) return;
+  if (!confirm(`Delete "${CHARACTERS[idx].name}"?`)) return;
   CHARACTERS.splice(idx, 1);
   saveCharactersToStorage();
   showView('view-char-list');
@@ -266,6 +317,7 @@ fileInput.addEventListener('change', e => {
       ch.imgs[pendingMood] = img;
       saveCharactersToStorage();
       renderMoodGrid(ch);
+      renderHeroAvatar(ch);
       document.getElementById('char-title').textContent = ch.name;
     };
     img.src = dataUrl;
@@ -371,6 +423,221 @@ document.getElementById('crop-ok-btn').addEventListener('click', () => {
   if (cropCallback) { cropCallback(dataUrl); cropCallback = null; }
 });
 
+// ── Interactions — inline editable with drag-to-reorder ───────────────────────
+let dragSrcCard   = null;
+let touchDragCard = null;
+let touchDragIdx  = null;
+
+function autoResize(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = ta.scrollHeight + 'px';
+}
+
+function renderInteractionsList() {
+  const ch   = CHARACTERS[charEditIdx];
+  const list = document.getElementById('interactions-list');
+  list.innerHTML = '';
+
+  if (!ch.interactions || ch.interactions.length === 0) {
+    const empty = document.createElement('div');
+    empty.className   = 'iact-empty';
+    empty.textContent = 'No interactions yet — tap + Add to create one.';
+    list.appendChild(empty);
+    return;
+  }
+
+  ch.interactions.forEach((iact, i) => {
+    list.appendChild(buildIactCard(ch, iact, i));
+  });
+}
+
+function buildIactCard(ch, iact, i) {
+  const card = document.createElement('div');
+  card.className  = 'iact-card';
+  card.dataset.idx = i;
+
+  // ── Drag handle (2×3 dot grid)
+  const handle = document.createElement('div');
+  handle.className = 'iact-drag-handle';
+  handle.title     = 'Drag to reorder';
+  handle.innerHTML =
+    '<div class="drag-dot-row"><span class="drag-dot"></span><span class="drag-dot"></span></div>' +
+    '<div class="drag-dot-row"><span class="drag-dot"></span><span class="drag-dot"></span></div>' +
+    '<div class="drag-dot-row"><span class="drag-dot"></span><span class="drag-dot"></span></div>';
+
+  // ── Editable fields
+  const fields = document.createElement('div');
+  fields.className = 'iact-fields';
+
+  function makeField(labelText, fieldKey, value, maxLen, extraLabelClass, extraTaClass) {
+    const wrap = document.createElement('div');
+    wrap.className = 'iact-field';
+
+    const label = document.createElement('label');
+    label.className   = 'iact-label' + (extraLabelClass ? ' ' + extraLabelClass : '');
+    label.textContent = labelText;
+
+    const ta = document.createElement('textarea');
+    ta.className  = 'iact-textarea' + (extraTaClass ? ' ' + extraTaClass : '');
+    ta.value      = value;
+    ta.maxLength  = maxLen;
+    ta.rows       = 1;
+    ta.placeholder = labelText;
+
+    ta.addEventListener('input', () => {
+      autoResize(ta);
+      const idx = parseInt(card.dataset.idx);
+      ch.interactions[idx][fieldKey] = ta.value;
+      saveCharactersToStorage();
+    });
+
+    ta.addEventListener('blur', () => {
+      const idx = parseInt(card.dataset.idx);
+      if (ch.interactions[idx]) {
+        ch.interactions[idx][fieldKey] = ta.value.trim();
+        ta.value = ta.value.trim();
+        autoResize(ta);
+        saveCharactersToStorage();
+      }
+    });
+
+    wrap.appendChild(label);
+    wrap.appendChild(ta);
+    return { wrap, ta };
+  }
+
+  const { wrap: wText, ta: taText } = makeField('Question',  'text',    iact.text,    120);
+  const { wrap: wOk,   ta: taOk   } = makeField('✓ Correct', 'correct', iact.correct,  80, 'correct-label', 'correct-textarea');
+  const { wrap: wBad,  ta: taBad  } = makeField('✗ Wrong',   'wrong',   iact.wrong,    80, 'wrong-label',   'wrong-textarea');
+
+  fields.appendChild(wText);
+  fields.appendChild(wOk);
+  fields.appendChild(wBad);
+
+  // Auto-resize after paint
+  requestAnimationFrame(() => [taText, taOk, taBad].forEach(autoResize));
+
+  // ── Delete button
+  const delBtn = document.createElement('button');
+  delBtn.className   = 'iact-del-btn';
+  delBtn.textContent = '␡';
+  delBtn.title       = 'Delete interaction';
+  delBtn.addEventListener('click', () => {
+    const idx = parseInt(card.dataset.idx);
+    if (!confirm('Delete this interaction?')) return;
+    ch.interactions.splice(idx, 1);
+    saveCharactersToStorage();
+    renderInteractionsList();
+  });
+
+  card.appendChild(handle);
+  card.appendChild(fields);
+  card.appendChild(delBtn);
+
+  // ── Desktop drag — only drag when initiated from handle
+  handle.addEventListener('mousedown', () => {
+    card.setAttribute('draggable', 'true');
+    const reset = () => {
+      card.setAttribute('draggable', 'false');
+      document.removeEventListener('mouseup', reset);
+    };
+    document.addEventListener('mouseup', reset);
+  });
+
+  card.addEventListener('dragstart', e => {
+    dragSrcCard = card;
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => card.classList.add('dragging'), 0);
+  });
+
+  card.addEventListener('dragend', () => {
+    card.setAttribute('draggable', 'false');
+    card.classList.remove('dragging');
+    document.querySelectorAll('.iact-card').forEach(c => c.classList.remove('drag-over'));
+    dragSrcCard = null;
+  });
+
+  card.addEventListener('dragover', e => {
+    e.preventDefault();
+    if (card !== dragSrcCard) card.classList.add('drag-over');
+  });
+
+  card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+
+  card.addEventListener('drop', e => {
+    e.preventDefault();
+    if (!dragSrcCard || dragSrcCard === card) return;
+    const srcIdx = parseInt(dragSrcCard.dataset.idx);
+    const dstIdx = parseInt(card.dataset.idx);
+    const [item] = ch.interactions.splice(srcIdx, 1);
+    ch.interactions.splice(dstIdx, 0, item);
+    saveCharactersToStorage();
+    renderInteractionsList();
+  });
+
+  // ── Touch drag — initiated from handle
+  handle.addEventListener('touchstart', e => {
+    e.preventDefault();
+    touchDragCard = card;
+    touchDragIdx  = parseInt(card.dataset.idx);
+    card.classList.add('dragging');
+  }, { passive: false });
+
+  return card;
+}
+
+// Document-level touch move/end for mobile drag
+document.addEventListener('touchmove', e => {
+  if (!touchDragCard) return;
+  e.preventDefault();
+  const touch = e.touches[0];
+  // Temporarily hide dragged card so elementFromPoint can see card underneath
+  touchDragCard.style.visibility = 'hidden';
+  const el = document.elementFromPoint(touch.clientX, touch.clientY);
+  touchDragCard.style.visibility = '';
+  const target = el?.closest('.iact-card');
+  document.querySelectorAll('.iact-card').forEach(c => c.classList.remove('drag-over'));
+  if (target && target !== touchDragCard) target.classList.add('drag-over');
+}, { passive: false });
+
+document.addEventListener('touchend', e => {
+  if (!touchDragCard) return;
+  const touch = e.changedTouches[0];
+  touchDragCard.style.visibility = 'hidden';
+  const el = document.elementFromPoint(touch.clientX, touch.clientY);
+  touchDragCard.style.visibility = '';
+  const target = el?.closest('.iact-card');
+
+  if (target && target !== touchDragCard) {
+    const ch     = CHARACTERS[charEditIdx];
+    const dstIdx = parseInt(target.dataset.idx);
+    const [item] = ch.interactions.splice(touchDragIdx, 1);
+    ch.interactions.splice(dstIdx, 0, item);
+    saveCharactersToStorage();
+    renderInteractionsList();
+  } else {
+    touchDragCard.classList.remove('dragging');
+    document.querySelectorAll('.iact-card').forEach(c => c.classList.remove('drag-over'));
+  }
+  touchDragCard = null;
+  touchDragIdx  = null;
+}, { passive: true });
+
+document.getElementById('btn-add-interaction').addEventListener('click', () => {
+  const ch = CHARACTERS[charEditIdx];
+  if (!ch.interactions) ch.interactions = [];
+  ch.interactions.push({ text: '', correct: '', wrong: '' });
+  saveCharactersToStorage();
+  renderInteractionsList();
+  // Focus and scroll to the new card
+  requestAnimationFrame(() => {
+    const cards   = document.querySelectorAll('.iact-card');
+    const newCard = cards[cards.length - 1];
+    newCard?.querySelector('.iact-textarea')?.focus();
+    newCard?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+});
+
 // ── Firebase sync ─────────────────────────────────────────────────────────────
 function loadScriptsSeq(urls, cb) {
   if (!urls.length) { cb(); return; }
@@ -388,249 +655,90 @@ function initFirebase() {
     `https://www.gstatic.com/firebasejs/${VER}/firebase-storage-compat.js`,
   ], () => {
     _fbStorage = window.firebase.storage(window.firebase.initializeApp(FIREBASE_CONFIG));
-    firebaseLoadAll();
+    // Auto-load on startup
+    setSyncPill('saving', 'Syncing…');
+    firebaseLoadAll()
+      .then(() => {
+        setSyncPill('saved', '✓ Ready');
+        setTimeout(() => setSyncPill('', ''), 3000);
+        renderCharList();
+      })
+      .catch(err => {
+        if (err?.code === 'storage/object-not-found') {
+          setSyncPill('', ''); // No cloud data yet — that's OK
+        } else {
+          setSyncPill('error', '⚠ Sync failed');
+          console.error('Firebase load failed:', err);
+        }
+      });
   });
-}
-
-function setSyncStatus(msg) {
-  const el = document.getElementById('sync-status-text');
-  if (el) el.textContent = msg;
 }
 
 async function firebaseSaveAll() {
-  setSyncStatus('Uploading…');
-  try {
-    const root = _fbStorage.ref('characters');
-    const meta = {};
-    for (let i = 0; i < CHARACTERS.length; i++) {
-      const ch = CHARACTERS[i];
-      meta[i]  = { name: ch.name, color: ch.color, paths: {} };
-      for (const mood of ['default','happy','angry','sad']) {
-        if (!ch._imgData[mood]) continue;
-        const b64  = ch._imgData[mood].split(',')[1];
-        const bin  = atob(b64);
-        const arr  = new Uint8Array(bin.length);
-        for (let j = 0; j < bin.length; j++) arr[j] = bin.charCodeAt(j);
-        const path = `char-${i}-${mood}.jpg`;
-        await root.child(path).put(arr.buffer, { contentType: 'image/jpeg' });
-        meta[i].paths[mood] = path;
-      }
+  const root = _fbStorage.ref('characters');
+  const meta = {};
+  for (let i = 0; i < CHARACTERS.length; i++) {
+    const ch = CHARACTERS[i];
+    meta[i] = {
+      name:         ch.name,
+      color:        ch.color,
+      moods:        ch.moods,
+      interactions: ch.interactions || [],
+      paths:        {},
+    };
+    for (const mood of ['default','happy','angry','sad']) {
+      if (!ch._imgData[mood]) continue;
+      const b64  = ch._imgData[mood].split(',')[1];
+      const bin  = atob(b64);
+      const arr  = new Uint8Array(bin.length);
+      for (let j = 0; j < bin.length; j++) arr[j] = bin.charCodeAt(j);
+      const path = `char-${i}-${mood}.jpg`;
+      await root.child(path).put(arr.buffer, { contentType: 'image/jpeg' });
+      meta[i].paths[mood] = path;
     }
-    const metaBlob = new Blob([JSON.stringify(meta)], { type: 'application/json' });
-    await root.child('meta.json').put(metaBlob, { contentType: 'application/json' });
-    setSyncStatus('✓ Saved to Firebase');
-  } catch(err) {
-    setSyncStatus('Upload failed — check console');
-    console.error(err);
   }
+  const metaBlob = new Blob([JSON.stringify(meta)], { type: 'application/json' });
+  await root.child('meta.json').put(metaBlob, { contentType: 'application/json' });
 }
 
 async function firebaseLoadAll() {
-  setSyncStatus('Loading…');
-  try {
-    const metaUrl = await _fbStorage.ref('characters/meta.json').getDownloadURL();
-    const meta    = await fetch(metaUrl).then(r => r.json());
-    for (const [idx, charMeta] of Object.entries(meta)) {
-      const i = parseInt(idx);
-      if (!CHARACTERS[i]) continue;
-      if (charMeta.name)  CHARACTERS[i].name  = charMeta.name;
-      if (charMeta.color) CHARACTERS[i].color = charMeta.color;
-      for (const [mood, path] of Object.entries(charMeta.paths || {})) {
-        const url  = await _fbStorage.ref(`characters/${path}`).getDownloadURL();
-        const blob = await fetch(url).then(r => r.blob());
-        await new Promise(res => {
-          const fr = new FileReader();
-          fr.onload = ev => {
-            const dataUrl = ev.target.result;
-            CHARACTERS[i]._imgData[mood] = dataUrl;
-            const img = new Image();
-            img.onload = () => { CHARACTERS[i].imgs[mood] = img; res(); };
-            img.src = dataUrl;
-          };
-          fr.readAsDataURL(blob);
-        });
-      }
+  const metaUrl = await _fbStorage.ref('characters/meta.json').getDownloadURL();
+  const meta    = await fetch(metaUrl).then(r => r.json());
+
+  for (const [idx, charMeta] of Object.entries(meta)) {
+    const i = parseInt(idx);
+    // Extend CHARACTERS array if cloud has more than local
+    while (CHARACTERS.length <= i) {
+      const tpl = NEW_CHAR_PALETTE[CHARACTERS.length % NEW_CHAR_PALETTE.length];
+      CHARACTERS.push({ name: 'New Character', color: tpl.color,
+                        moods: { ...tpl.moods }, imgs: {}, _imgData: {}, interactions: [] });
     }
-    saveCharactersToStorage();
-    setSyncStatus('✓ Synced');
-    renderCharList();
-  } catch(err) {
-    setSyncStatus(err.code === 'storage/object-not-found' ? 'No data yet — save first' : 'Load failed');
+    if (charMeta.name)         CHARACTERS[i].name         = charMeta.name;
+    if (charMeta.color)        CHARACTERS[i].color        = charMeta.color;
+    if (charMeta.moods)        CHARACTERS[i].moods        = charMeta.moods;
+    if (charMeta.interactions) CHARACTERS[i].interactions = charMeta.interactions;
+
+    for (const [mood, path] of Object.entries(charMeta.paths || {})) {
+      const url  = await _fbStorage.ref(`characters/${path}`).getDownloadURL();
+      const blob = await fetch(url).then(r => r.blob());
+      await new Promise(res => {
+        const fr = new FileReader();
+        fr.onload = ev => {
+          const dataUrl = ev.target.result;
+          CHARACTERS[i]._imgData[mood] = dataUrl;
+          const img = new Image();
+          img.onload = () => { CHARACTERS[i].imgs[mood] = img; res(); };
+          img.src = dataUrl;
+        };
+        fr.readAsDataURL(blob);
+      });
+    }
   }
-}
-
-function renderSyncSection() {
-  const wrap = document.getElementById('char-drive-section');
-  if (!FIREBASE_CONFIG.apiKey) { wrap.innerHTML = ''; return; }
-  wrap.innerHTML = `
-    <div style="padding:16px 16px 4px">
-      <p class="s-section-label">Cloud Sync</p>
-      <div class="drive-card">
-        <div class="drive-row">
-          <span class="drive-status" id="sync-status-text">
-            ${_fbStorage ? 'Ready' : 'Connecting…'}
-          </span>
-        </div>
-        <div class="drive-row">
-          <button class="btn-drive" style="flex:1" id="sync-save-btn">↑ Save for everyone</button>
-          <button class="btn-drive" style="flex:1" id="sync-load-btn">↓ Load latest</button>
-        </div>
-      </div>
-    </div>`;
-  document.getElementById('sync-save-btn').addEventListener('click', firebaseSaveAll);
-  document.getElementById('sync-load-btn').addEventListener('click', firebaseLoadAll);
-}
-
-// ── Interaction CRUD ──────────────────────────────────────────────────────────
-let iactEditIdx = -1;
-
-function escHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-function renderInteractionsList() {
-  const ch   = CHARACTERS[charEditIdx];
-  const list = document.getElementById('interactions-list');
-  list.innerHTML = '';
-
-  if (!ch.interactions || ch.interactions.length === 0) {
-    const p = document.createElement('p');
-    p.className   = 'iact-empty';
-    p.textContent = 'No interactions yet — add one below.';
-    list.appendChild(p);
-    return;
-  }
-
-  ch.interactions.forEach((iact, i) => {
-    const item = document.createElement('div');
-    item.className = 'iact-item';
-
-    const textWrap = document.createElement('div');
-    textWrap.className = 'iact-item-text';
-
-    const q = document.createElement('div');
-    q.className   = 'iact-q';
-    q.textContent = iact.text;
-
-    const resp = document.createElement('div');
-    resp.className   = 'iact-responses';
-    resp.textContent = `✓ ${iact.correct}   ✗ ${iact.wrong}`;
-
-    textWrap.appendChild(q);
-    textWrap.appendChild(resp);
-
-    const btns = document.createElement('div');
-    btns.className = 'iact-btns';
-
-    const editBtn = document.createElement('button');
-    editBtn.className   = 'btn-iact-edit';
-    editBtn.textContent = 'Edit';
-    editBtn.addEventListener('click', () => openIactForm(i));
-
-    const delBtn = document.createElement('button');
-    delBtn.className   = 'btn-iact-del';
-    delBtn.textContent = '✕';
-    delBtn.addEventListener('click', () => deleteIact(i));
-
-    btns.appendChild(editBtn);
-    btns.appendChild(delBtn);
-    item.appendChild(textWrap);
-    item.appendChild(btns);
-    list.appendChild(item);
-  });
-}
-
-function openIactForm(idx) {
-  iactEditIdx = idx;
-  const ch    = CHARACTERS[charEditIdx];
-  const iact  = idx >= 0 ? ch.interactions[idx] : { text: '', correct: '', wrong: '' };
-
-  const formWrap = document.getElementById('interaction-form');
-  formWrap.innerHTML = '';
-
-  const card = document.createElement('div');
-  card.className = 'iact-form';
-
-  const txtInput = document.createElement('input');
-  txtInput.type = 'text'; txtInput.id = 'iact-text';
-  txtInput.placeholder = 'Question text'; txtInput.maxLength = 120;
-  txtInput.value = iact.text;
-
-  const okInput = document.createElement('input');
-  okInput.type = 'text'; okInput.id = 'iact-correct';
-  okInput.placeholder = 'Correct response'; okInput.maxLength = 80;
-  okInput.value = iact.correct;
-
-  const badInput = document.createElement('input');
-  badInput.type = 'text'; badInput.id = 'iact-wrong';
-  badInput.placeholder = 'Wrong response'; badInput.maxLength = 80;
-  badInput.value = iact.wrong;
-
-  const btnRow = document.createElement('div');
-  btnRow.className = 'iact-form-btns';
-
-  const saveBtn = document.createElement('button');
-  saveBtn.type = 'button'; saveBtn.className = 'btn-iact-save';
-  saveBtn.textContent = idx >= 0 ? 'Update' : 'Add';
-  saveBtn.addEventListener('click', saveIact);
-
-  const cancelBtn = document.createElement('button');
-  cancelBtn.type = 'button'; cancelBtn.className = 'btn-iact-cancel';
-  cancelBtn.textContent = 'Cancel';
-  cancelBtn.addEventListener('click', closeIactForm);
-
-  btnRow.appendChild(saveBtn);
-  btnRow.appendChild(cancelBtn);
-  card.appendChild(txtInput);
-  card.appendChild(okInput);
-  card.appendChild(badInput);
-  card.appendChild(btnRow);
-  formWrap.appendChild(card);
-
-  document.getElementById('btn-add-interaction').style.display = 'none';
-  txtInput.focus();
-}
-
-function closeIactForm() {
-  const formWrap = document.getElementById('interaction-form');
-  if (formWrap) formWrap.innerHTML = '';
-  const addBtn = document.getElementById('btn-add-interaction');
-  if (addBtn) addBtn.style.display = '';
-  iactEditIdx = -1;
-}
-
-function saveIact() {
-  const text    = (document.getElementById('iact-text')?.value    || '').trim();
-  const correct = (document.getElementById('iact-correct')?.value || '').trim();
-  const wrong   = (document.getElementById('iact-wrong')?.value   || '').trim();
-  if (!text || !correct || !wrong) return;
-
-  const ch = CHARACTERS[charEditIdx];
-  if (!ch.interactions) ch.interactions = [];
-
-  if (iactEditIdx >= 0) {
-    ch.interactions[iactEditIdx] = { text, correct, wrong };
-  } else {
-    ch.interactions.push({ text, correct, wrong });
-  }
-
   saveCharactersToStorage();
-  closeIactForm();
-  renderInteractionsList();
 }
-
-function deleteIact(idx) {
-  const ch = CHARACTERS[charEditIdx];
-  ch.interactions.splice(idx, 1);
-  saveCharactersToStorage();
-  renderInteractionsList();
-}
-
-document.getElementById('btn-add-interaction').addEventListener('click', () => openIactForm(-1));
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 loadCharactersFromStorage();
-initFirebase();
 document.getElementById('s-version').textContent = VERSION;
+renderCharList();
+initFirebase(); // loads from Firebase on start; after load, re-renders
