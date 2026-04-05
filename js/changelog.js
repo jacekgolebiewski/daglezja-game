@@ -3,6 +3,13 @@
 
 const CHANGELOG = [
   {
+    "version": "v0.4.2",
+    "date": "2026-04-05",
+    "changes": [
+      "Add choinka (Christmas tree) SVG favicon"
+    ]
+  },
+  {
     "version": "v0.4.1",
     "date": "2026-04-05",
     "changes": [

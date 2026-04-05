@@ -2,6 +2,9 @@
 
 All notable changes to Daglezja are documented here.
 
+## [v0.4.2] - 2026-04-05
+- Add choinka (Christmas tree) SVG favicon
+
 ## [v0.4.1] - 2026-04-05
 - Fix NPC encounter bridging platform always rendering as grass regardless of current biome
 
