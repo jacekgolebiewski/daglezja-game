@@ -2,8 +2,8 @@
 
 All notable changes to Daglezja are documented here.
 
-## [v0.4.1] - 2026-04-05
-- Fix NPC shadowing: follow player's world-space path with temporal delay instead of rigid screen-lock, so the NPC naturally lags further behind at high speed and stays closer at low speed
+## [v0.4.4] - 2026-04-05
+- Rework NPC shadowing: true time-based temporal following in all phases (approaching, following, talking, reacting, leaving) — NPC always sits at the player's world position from 0.17 s ago, no camera locking anywhere; screen distance stretches at high speed and compresses at low speed naturally
 
 ## [v0.4.0] - 2026-04-05
 - Introduce changelog file and version history panel in Settings

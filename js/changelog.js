@@ -3,10 +3,10 @@
 
 const CHANGELOG = [
   {
-    "version": "v0.4.1",
+    "version": "v0.4.4",
     "date": "2026-04-05",
     "changes": [
-      "Fix NPC shadowing: follow player's world-space path with temporal delay instead of rigid screen-lock, so the NPC naturally lags further behind at high speed and stays closer at low speed"
+      "Rework NPC shadowing: true time-based temporal following in all phases (approaching, following, talking, reacting, leaving) — NPC always sits at the player's world position from 0.17 s ago, no camera locking anywhere; screen distance stretches at high speed and compresses at low speed naturally"
     ]
   },
   {
