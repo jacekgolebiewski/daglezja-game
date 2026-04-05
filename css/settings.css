@@ -31,18 +31,20 @@ body {
 }
 .s-spacer { min-width: 60px; }
 
-/* ── Nav save button ── */
-.nav-save-btn {
-  background: none; border: none;
-  color: #007aff; font-size: 16px; font-weight: 600;
-  cursor: pointer; padding: 0; font-family: inherit;
-  white-space: nowrap; min-width: 44px; text-align: right;
-  transition: opacity 0.15s, color 0.2s;
+/* ── Cloud save button (bottom of character editor) ── */
+.btn-save-cloud {
+  background: #007aff; color: #fff; border: none;
+  border-radius: 12px; padding: 14px 24px;
+  font-size: 16px; font-weight: 600;
+  cursor: pointer; width: 100%;
+  margin-bottom: 10px; font-family: inherit;
+  transition: background 0.15s, opacity 0.15s;
 }
-.nav-save-btn:active   { opacity: 0.6; }
-.nav-save-btn:disabled { color: #aaa; cursor: default; }
-.nav-save-btn.saved    { color: #34c759; }
-.nav-save-btn.error    { color: #ff3b30; }
+.btn-save-cloud:hover    { background: #0066d6; }
+.btn-save-cloud:active   { opacity: 0.8; }
+.btn-save-cloud:disabled { background: #aaa; cursor: default; }
+.btn-save-cloud.saved    { background: #34c759; }
+.btn-save-cloud.error    { background: #ff3b30; }
 
 /* ── Body & sections ── */
 .s-body { padding: 24px 16px 60px; }
