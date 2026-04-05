@@ -54,12 +54,13 @@ let pauseOverlayBtns = null;
 let deadBtns = null;
 let avatarBackBtn = null;
 
-let musicEnabled = false;
-let musicVideoId = '';
-let ytPlayer     = null;
-let ytReady      = false;
-let musicPlaying = false;
-let musicBtn     = null;
+let musicEnabled  = false;
+let musicVideoId  = '';
+let ytPlayer      = null;
+let ytReady       = false;
+let musicPlaying  = false;
+let musicBtn      = null;
+let lastMusicRate = 1;
 
 best           = 0;
 playerCharIdx  = -1;
@@ -1568,6 +1569,7 @@ function loop(ts) {
   lastTime = ts;
   if (!paused && (state === 'playing' || state === 'dialogue')) update(dt);
   if (!paused && state === 'dialogue') updateDialogue(dt);
+  if (!paused && musicPlaying && (state === 'playing' || state === 'dialogue')) updateMusicRate();
   if (screenShake > 0.4) screenShake *= 1 - Math.min(1, dt * 8);
   else                   screenShake = 0;
   draw();
@@ -1625,6 +1627,7 @@ window.onYouTubeIframeAPIReady = function() {
 
 function musicPlay() {
   if (!musicEnabled || !ytReady || !ytPlayer) return;
+  lastMusicRate = 1;
   ytPlayer.playVideo();
   musicPlaying = true;
 }
@@ -1633,11 +1636,29 @@ function musicPause() {
   if (!ytReady || !ytPlayer) return;
   ytPlayer.pauseVideo();
   musicPlaying = false;
+  try { ytPlayer.setPlaybackRate(1); } catch(e) {}
+  lastMusicRate = 1;
 }
 
 function toggleMusic() {
   if (musicPlaying) musicPause();
   else musicPlay();
+}
+
+function updateMusicRate() {
+  if (!musicEnabled || !ytReady || !ytPlayer || !musicPlaying) return;
+  const pct      = Math.max(0, Math.min(1, (speed - SPEED_START) / (SPEED_MAX - SPEED_START)));
+  const target   = 1 + pct * 0.5; // 1.0× – 1.5×
+  const available = (typeof ytPlayer.getAvailablePlaybackRates === 'function')
+    ? ytPlayer.getAvailablePlaybackRates()
+    : [1, 1.25, 1.5];
+  const snapped = available.reduce((best, r) =>
+    Math.abs(r - target) < Math.abs(best - target) ? r : best
+  );
+  if (snapped !== lastMusicRate) {
+    try { ytPlayer.setPlaybackRate(snapped); } catch(e) {}
+    lastMusicRate = snapped;
+  }
 }
 
 // ── Gameplay settings loader ──────────────────────────────────────────────────

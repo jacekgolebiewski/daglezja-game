@@ -446,6 +446,8 @@ async function firebaseSaveAll() {
     }
     const metaBlob = new Blob([JSON.stringify(meta)], { type: 'application/json' });
     await root.child('meta.json').put(metaBlob, { contentType: 'application/json' });
+    const musicBlob = new Blob([JSON.stringify({ url: loadMusic().url })], { type: 'application/json' });
+    await _fbStorage.ref('music/config.json').put(musicBlob, { contentType: 'application/json' });
     setSyncStatus('✓ Saved to Firebase');
   } catch(err) {
     setSyncStatus('Upload failed — check console');
@@ -480,6 +482,17 @@ async function firebaseLoadAll() {
       }
     }
     saveCharactersToStorage();
+    try {
+      const musicCfgUrl = await _fbStorage.ref('music/config.json').getDownloadURL();
+      const musicData   = await fetch(musicCfgUrl + '?t=' + Date.now()).then(r => r.json());
+      if (musicData.url) {
+        const m = loadMusic();
+        m.url = musicData.url;
+        saveMusic(m);
+        const musicUrlEl = document.getElementById('music-url');
+        if (musicUrlEl) musicUrlEl.value = musicData.url;
+      }
+    } catch(e) { /* no music config in Firebase yet — silently skip */ }
     setSyncStatus('✓ Synced');
     renderCharList();
   } catch(err) {
