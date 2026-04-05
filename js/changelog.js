@@ -3,6 +3,13 @@
 
 const CHANGELOG = [
   {
+    "version": "v0.5.1",
+    "date": "2026-04-05",
+    "changes": [
+      "Rework NPC shadowing: true time-based temporal following in all phases — NPC always sits at the player's world position from 0.17 s ago, no camera locking anywhere; screen distance stretches at high speed and compresses at low speed naturally"
+    ]
+  },
+  {
     "version": "v0.5.0",
     "date": "2026-04-05",
     "changes": [

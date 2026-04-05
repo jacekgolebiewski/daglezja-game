@@ -2,6 +2,9 @@
 
 All notable changes to Daglezja are documented here.
 
+## [v0.5.1] - 2026-04-05
+- Rework NPC shadowing: true time-based temporal following in all phases — NPC always sits at the player's world position from 0.17 s ago, no camera locking anywhere; screen distance stretches at high speed and compresses at low speed naturally
+
 ## [v0.5.0] - 2026-04-05
 - Material-inspired settings redesign: frosted nav bar, elevated cards, iOS gray palette
 - Save button moved to nav bar (☁ Save) — always visible without scrolling

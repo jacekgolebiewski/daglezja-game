@@ -45,6 +45,7 @@ let dlg;
 let dlgBtns;
 let npc;
 let playerPathHistory;
+let gameTime;
 let nextDialogueTrigger;
 let screenShake;
 let settingsBtn;
@@ -104,6 +105,7 @@ function init() {
   dlgBtns             = [];
   npc                 = null;
   playerPathHistory   = [];
+  gameTime            = 0;
   screenShake         = 0;
   nextDialogueTrigger = DIALOGUE_FIRST;
 
@@ -268,14 +270,34 @@ function startDialogueSpeechBubble() {
   npc.phase = 'talking';
 }
 
+// How many seconds behind the player the NPC shadows.
+// At 320 px/s this equals ~54 px = 1.5 blocks, matching the original visual target.
+// Because the delay is time-based (not frame-count or camera-relative), the NPC's
+// screen distance naturally stretches at high speed and compresses at low speed.
+const NPC_FOLLOW_DELAY = 0.17; // seconds
+
 // NPC shadow-player: approaches player, follows briefly, then leaves after answer
 function updateNpc(dt) {
   if (!npc) return;
+  const hist = playerPathHistory;
 
-  const hist          = playerPathHistory;
-  const targetScreenX = PLAYER_SCR_X - B * 1.5;
+  // Return the interpolated player world-position from `delay` seconds ago.
+  // Returns null if there is not enough recorded history yet.
+  function temporalEntry(delay) {
+    const targetT = gameTime - delay;
+    if (hist.length === 0 || hist[0].t > targetT) return null;
+    let lo = 0, hi = hist.length - 1;
+    while (lo < hi - 1) {
+      const mid = (lo + hi) >> 1;
+      if (hist[mid].t <= targetT) lo = mid; else hi = mid;
+    }
+    const a = hist[lo], b = hist[Math.min(lo + 1, hist.length - 1)];
+    const denom = b.t - a.t;
+    const fr = denom > 0 ? Math.max(0, Math.min(1, (targetT - a.t) / denom)) : 0;
+    return { wx: a.wx + (b.wx - a.wx) * fr, y: a.y + (b.y - a.y) * fr };
+  }
 
-  // Look up the player's Y from path history at a given world-X position
+  // Spatial Y lookup used only during approach (NPC hasn't reached follow position yet)
   function yAtWorldX(wx) {
     if (hist.length === 0 || wx > hist[hist.length - 1].wx) return player.y;
     let lo = 0, hi = hist.length - 1;
@@ -285,60 +307,59 @@ function updateNpc(dt) {
     }
     const a = hist[lo], b = hist[Math.min(lo + 1, hist.length - 1)];
     const denom = b.wx - a.wx;
-    const t = denom > 0 ? Math.max(0, Math.min(1, (wx - a.wx) / denom)) : 0;
-    return a.y + (b.y - a.y) * t;
+    const fr = denom > 0 ? Math.max(0, Math.min(1, (wx - a.wx) / denom)) : 0;
+    return a.y + (b.y - a.y) * fr;
   }
 
   if (npc.phase === 'approaching') {
     // Move faster than camera so NPC catches up from behind
     npc.wx += speed * 1.5 * dt;
     npc.y   = yAtWorldX(npc.wx);
-    const npcScreenX = npc.wx - cameraX;
-    if (npcScreenX >= targetScreenX) {
-      npc.wx    = cameraX + targetScreenX; // snap into position
-      npc.y     = yAtWorldX(npc.wx);
+    // Transition when NPC reaches the temporal-follow world position (no snap)
+    const target = temporalEntry(NPC_FOLLOW_DELAY);
+    const reached = target
+      ? npc.wx >= target.wx
+      : (npc.wx - cameraX) >= (PLAYER_SCR_X - B * 1.5); // fallback if history short
+    if (reached) {
       npc.phase = 'following';
       npc.timer = 0;
     }
+
   } else if (npc.phase === 'following') {
-    // Follow the player's world-space path with a fixed temporal delay so the NPC
-    // naturally lags further behind at high speed and stays closer at low speed,
-    // instead of being rigidly screen-locked regardless of speed changes.
-    // At the default speed (~320 px/s, 60 fps) FOLLOW_DELAY≈10 frames ≈ 1.5 blocks.
-    const FOLLOW_DELAY = 10;
-    if (hist.length > FOLLOW_DELAY) {
-      const entry = hist[hist.length - 1 - FOLLOW_DELAY];
+    // Sit at the player's true world position from NPC_FOLLOW_DELAY seconds ago.
+    // Screen distance varies naturally: further behind at high speed, closer at low speed.
+    const entry = temporalEntry(NPC_FOLLOW_DELAY);
+    if (entry) {
       npc.wx = entry.wx;
       npc.y  = entry.y;
     } else {
-      // Not enough history yet – screen-relative fallback
-      npc.wx += speed * dt;
-      npc.y   = yAtWorldX(npc.wx);
+      npc.wx = player.wx - B * 1.5;
+      npc.y  = yAtWorldX(npc.wx);
     }
     npc.timer += dt;
-    if (npc.timer >= 0.5) {
-      startDialogueSpeechBubble();
-    }
+    if (npc.timer >= 0.5) startDialogueSpeechBubble();
+
   } else if (npc.phase === 'talking') {
-    // Lock to fixed screen position while dialogue is active
-    npc.wx = cameraX + targetScreenX;
-    npc.y  = yAtWorldX(npc.wx);
+    // Continue true-path following during dialogue — drawDialogue() is a fixed top-bar
+    // and does not depend on the NPC's screen position at all.
+    const entry = temporalEntry(NPC_FOLLOW_DELAY);
+    if (entry) { npc.wx = entry.wx; npc.y = entry.y; }
+
   } else if (npc.phase === 'reacting') {
-    // Stay visible briefly so player sees face, then begin exit
-    npc.wx = cameraX + targetScreenX;
-    npc.y  = yAtWorldX(npc.wx);
+    const entry = temporalEntry(NPC_FOLLOW_DELAY);
+    if (entry) { npc.wx = entry.wx; npc.y = entry.y; }
     npc.timer += dt;
-    if (npc.timer >= 0.4) {
-      npc.phase = 'leaving';
-      npc.timer = 0;
-    }
+    if (npc.timer >= 0.4) { npc.phase = 'leaving'; npc.timer = 0; }
+
   } else if (npc.phase === 'leaving') {
-    // Slow down — camera pulls away, NPC drifts off left naturally
-    npc.wx += speed * 0.25 * dt;
-    npc.y   = yAtWorldX(npc.wx);
-    if (npc.wx - cameraX < -B * 4) {
-      npc = null;
-    }
+    // Grow the temporal delay over time so the NPC falls progressively further
+    // behind the player in world space and drifts off-screen naturally.
+    npc.timer += dt;
+    const entry = temporalEntry(NPC_FOLLOW_DELAY + npc.timer * 1.5);
+    if (!entry) { npc = null; return; }
+    npc.wx = entry.wx;
+    npc.y  = entry.y;
+    if (npc.wx - cameraX < -B * 4) npc = null;
   }
 }
 
@@ -415,6 +436,8 @@ function answerDialogue(idx) {
 
 // ── Update ────────────────────────────────────────────────────────────────────
 function update(dt) {
+  gameTime += dt;
+
   if (playerMoodTimer > 0) {
     playerMoodTimer -= dt;
     if (playerMoodTimer <= 0) playerMoodKey = 'default';
@@ -471,8 +494,8 @@ function update(dt) {
     }
   }
 
-  // Record player's path so NPC can follow it with spatial delay
-  playerPathHistory.push({ wx: player.wx, y: player.y });
+  // Record player's world path with timestamp so NPC can follow it with a true temporal delay
+  playerPathHistory.push({ wx: player.wx, y: player.y, t: gameTime });
   if (playerPathHistory.length > 300) playerPathHistory.shift();
 
   updateNpc(dt);
