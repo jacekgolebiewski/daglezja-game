@@ -102,6 +102,17 @@ function saveGP(gp) {
   localStorage.setItem(GAMEPLAY_STORAGE_KEY, JSON.stringify(gp));
 }
 
+function loadMusic() {
+  try {
+    const raw = localStorage.getItem(MUSIC_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : { enabled: false, url: '' };
+  } catch(e) { return { enabled: false, url: '' }; }
+}
+
+function saveMusic(m) {
+  localStorage.setItem(MUSIC_STORAGE_KEY, JSON.stringify(m));
+}
+
 const GP_SLIDERS = [
   { sliderId: 'sl-speed-start',   valId: 'val-speed-start',   key: 'speedStart',       unit: 'px/s'   },
   { sliderId: 'sl-speed-reward',  valId: 'val-speed-reward',  key: 'speedReward',      unit: 'px/s'   },
@@ -126,6 +137,23 @@ function renderGameplayView() {
       saveGP(gp2);
     };
   });
+
+  // Music settings
+  const music = loadMusic();
+  const musicEnabledEl = document.getElementById('music-enabled');
+  const musicUrlEl     = document.getElementById('music-url');
+  musicEnabledEl.checked = !!music.enabled;
+  musicUrlEl.value       = music.url || '';
+  musicEnabledEl.onchange = () => {
+    const m = loadMusic();
+    m.enabled = musicEnabledEl.checked;
+    saveMusic(m);
+  };
+  musicUrlEl.onchange = () => {
+    const m = loadMusic();
+    m.url = musicUrlEl.value.trim();
+    saveMusic(m);
+  };
 }
 
 document.getElementById('btn-gp-reset').addEventListener('click', () => {
