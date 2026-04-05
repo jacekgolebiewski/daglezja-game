@@ -33,10 +33,11 @@
         <span class="s-key">Game</span>
         <span class="s-val">Daglezja</span>
       </div>
-      <div class="s-row">
+      <div class="s-row s-row-tappable" id="s-version-row">
         <span class="s-key">Version</span>
-        <span class="s-val" id="s-version"></span>
+        <span class="s-val s-val-arrow" id="s-version"></span>
       </div>
+      <div id="s-changelog-panel" class="s-changelog-panel" hidden></div>
     </div>
   </div>
 </div>
@@ -185,6 +186,7 @@
 <input type="file" id="img-file-input" accept="image/*" style="display:none" />
 
 <script src="js/shared.js"></script>
+<script src="js/changelog.js"></script>
 <script src="js/settings.js"></script>
 </body>
 </html>

@@ -325,6 +325,37 @@ body {
 }
 .gp-reset:hover { border-color: #1a5c1f; color: #1a5c1f; }
 
+/* ── Changelog panel ── */
+.s-changelog-panel {
+  background: #fafafa;
+  border-top: 1px solid #f2f2f2;
+  padding: 14px 16px 6px;
+}
+.cl-entry {
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #efefef;
+}
+.cl-entry:last-child { border-bottom: none; margin-bottom: 0; }
+.cl-header {
+  display: flex; align-items: baseline;
+  justify-content: space-between; margin-bottom: 6px;
+}
+.cl-version { font-size: 13px; font-weight: 700; color: #111; }
+.cl-entry-current .cl-version { color: #007aff; }
+.cl-date { font-size: 11px; color: #bbb; }
+.cl-list {
+  list-style: none; padding: 0; margin: 0;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.cl-list li {
+  font-size: 12px; color: #666; line-height: 1.45;
+  padding-left: 12px; position: relative;
+}
+.cl-list li::before {
+  content: '·'; position: absolute; left: 0; color: #bbb;
+}
+
 /* ── Crop modal ── */
 #crop-modal {
   display: none;

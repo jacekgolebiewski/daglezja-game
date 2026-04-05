@@ -749,8 +749,39 @@ async function firebaseLoadAll() {
   } catch(e) { /* no gameplay data in cloud yet — keep local */ }
 }
 
+// ── Changelog panel ───────────────────────────────────────────────────────────
+function buildChangelogPanel() {
+  const panel = document.getElementById('s-changelog-panel');
+  if (!panel || typeof CHANGELOG === 'undefined') return;
+  const html = CHANGELOG.map((entry, i) => {
+    const isCurrent = i === 0;
+    const items = entry.changes.map(c => `<li>${c}</li>`).join('');
+    return `<div class="cl-entry${isCurrent ? ' cl-entry-current' : ''}">
+      <div class="cl-header">
+        <span class="cl-version">${entry.version}</span>
+        <span class="cl-date">${entry.date}</span>
+      </div>
+      <ul class="cl-list">${items}</ul>
+    </div>`;
+  }).join('');
+  panel.innerHTML = html;
+}
+
+function initVersionRow() {
+  const row    = document.getElementById('s-version-row');
+  const panel  = document.getElementById('s-changelog-panel');
+  if (!row || !panel) return;
+  buildChangelogPanel();
+  row.addEventListener('click', () => {
+    panel.hidden = !panel.hidden;
+    const val = document.getElementById('s-version');
+    val.textContent = panel.hidden ? VERSION + ' ›' : VERSION + ' ∧';
+  });
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 loadCharactersFromStorage();
-document.getElementById('s-version').textContent = VERSION;
+document.getElementById('s-version').textContent = VERSION + ' ›';
 renderCharList();
 initFirebase(); // loads from Firebase on start; after load, re-renders
+initVersionRow();
