@@ -26,6 +26,7 @@ let GAME_MAX_GAP      = 2;    // max gap between platforms (blocks, 1–3)
 let DIALOGUE_FIRST    = 30;   // blocks until first encounter
 let DIALOGUE_INTERVAL = 120;  // blocks between subsequent encounters
 let LEVEL_LENGTH      = 50;   // platforms per run (0 = infinite)
+let SPRITE_SIZE       = 50;   // player & NPC sprite size in px
 
 // ── Globals ───────────────────────────────────────────────────────────────────
 const C   = document.getElementById('c');
@@ -126,10 +127,10 @@ function init() {
 
   player = {
     wx: cameraX + PLAYER_SCR_X,
-    y:  groundY - B,
+    y:  groundY - SPRITE_SIZE,
     vy: 0,
-    w:  B,
-    h:  B,
+    w:  SPRITE_SIZE,
+    h:  SPRITE_SIZE,
     onGround: true,
   };
 
@@ -1062,26 +1063,26 @@ function drawPlayer() {
 function drawNpc() {
   if (!npc) return;
   const sx = npc.wx - cameraX;
-  if (sx + B < 0 || sx > W) return;
+  if (sx + SPRITE_SIZE < 0 || sx > W) return;
   const ch = CHARACTERS[npc.charIdx];
 
   ctx.fillStyle = ch ? ch.color : '#60a5fa';
-  roundRect(sx, npc.y, B, B, 8);
+  roundRect(sx, npc.y, SPRITE_SIZE, SPRITE_SIZE, 8);
   ctx.fill();
 
   const imgObj = ch && (ch.imgs[npc.moodKey] || ch.imgs.default);
   if (imgObj && imgObj.complete && imgObj.naturalWidth) {
     ctx.save();
-    roundRect(sx, npc.y, B, B, 3);
+    roundRect(sx, npc.y, SPRITE_SIZE, SPRITE_SIZE, 3);
     ctx.clip();
-    ctx.drawImage(imgObj, sx, npc.y, B, B);
+    ctx.drawImage(imgObj, sx, npc.y, SPRITE_SIZE, SPRITE_SIZE);
     ctx.restore();
   } else if (ch) {
-    const emojiSz = Math.floor(B * 0.82);
+    const emojiSz = Math.floor(SPRITE_SIZE * 0.82);
     ctx.font         = `${emojiSz}px serif`;
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(ch.moods[npc.moodKey] || ch.moods.default, sx + B / 2, npc.y + B / 2);
+    ctx.fillText(ch.moods[npc.moodKey] || ch.moods.default, sx + SPRITE_SIZE / 2, npc.y + SPRITE_SIZE / 2);
     ctx.textBaseline = 'alphabetic';
   }
 }
@@ -1734,6 +1735,7 @@ function loadGameplaySettings() {
     if (typeof s.dialogueInterval === 'number') DIALOGUE_INTERVAL = s.dialogueInterval;
     if (typeof s.dialogueFirst    === 'number') DIALOGUE_FIRST    = s.dialogueFirst;
     if (typeof s.levelLength      === 'number') LEVEL_LENGTH      = s.levelLength;
+    if (typeof s.spriteSize       === 'number') SPRITE_SIZE       = s.spriteSize;
   } catch(e) { /* ignore corrupt data */ }
 }
 

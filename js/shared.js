@@ -15,6 +15,7 @@ const GP_DEFAULTS = {
   dialogueFirst:    30,
   dialogueInterval: 120,
   levelLength:      50,
+  spriteSize:       50,
 };
 
 // Default characters — overridden by localStorage on boot

@@ -110,6 +110,7 @@ const GP_SLIDERS = [
   { sliderId: 'sl-dlg-first',     valId: 'val-dlg-first',     key: 'dialogueFirst',    unit: 'blocks' },
   { sliderId: 'sl-dlg-interval',  valId: 'val-dlg-interval',  key: 'dialogueInterval', unit: 'blocks'     },
   { sliderId: 'sl-level-length',  valId: 'val-level-length',  key: 'levelLength',      unit: 'platforms'  },
+  { sliderId: 'sl-sprite-size',   valId: 'val-sprite-size',   key: 'spriteSize',       unit: 'px'         },
 ];
 
 function renderGameplayView() {
@@ -411,9 +412,9 @@ document.getElementById('crop-cancel-btn').addEventListener('click', () => {
 });
 document.getElementById('crop-ok-btn').addEventListener('click', () => {
   const out = document.createElement('canvas');
-  out.width = 128; out.height = 128;
+  out.width = 100; out.height = 100;
   const oc  = out.getContext('2d');
-  const ratio = 128 / cs.size;
+  const ratio = 100 / cs.size;
   oc.drawImage(cs.img,
     cs.ox * ratio, cs.oy * ratio,
     cs.img.width  * cs.scale * ratio,
