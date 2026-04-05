@@ -3,6 +3,13 @@
 
 const CHANGELOG = [
   {
+    "version": "v0.4.1",
+    "date": "2026-04-05",
+    "changes": [
+      "Fix NPC encounter bridging platform always rendering as grass regardless of current biome"
+    ]
+  },
+  {
     "version": "v0.4.0",
     "date": "2026-04-05",
     "changes": [

@@ -201,7 +201,8 @@ function generateChoicePaths() {
 
   const lastEnd = platforms.reduce((mx, p) => Math.max(mx, p.wx + p.wb * B), cameraX);
   if (forkX > lastEnd) {
-    platforms.push({ wx: lastEnd, y: H - B * 2, wb: Math.ceil((forkX - lastEnd) / B) });
+    const bwb = Math.ceil((forkX - lastEnd) / B);
+    platforms.push({ wx: lastEnd, y: H - B * 2, wb: bwb, blockType: genKind, decor: pickDecor(bwb, genKind) });
   }
 
   const count  = 5;
