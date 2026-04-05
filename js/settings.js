@@ -33,18 +33,16 @@ function saveCharactersToStorage() {
   localStorage.setItem(CHAR_STORAGE_KEY, JSON.stringify(data));
 }
 
-// ── Nav save button state ─────────────────────────────────────────────────────
+// ── Save button state ─────────────────────────────────────────────────────────
 function setSaveBtn(state) {
-  ['list-save-btn', 'edit-save-btn'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.disabled  = state === 'saving';
-    el.className = 'nav-save-btn' + (state && state !== 'saving' ? ' ' + state : '');
-    el.textContent = state === 'saving' ? 'Saving…'
-                   : state === 'saved'  ? '✓ Saved'
-                   : state === 'error'  ? '⚠ Failed'
-                   : 'Save';
-  });
+  const el = document.getElementById('char-save-btn');
+  if (!el) return;
+  el.disabled    = state === 'saving';
+  el.className   = 'btn-save-cloud' + (state && state !== 'saving' ? ' ' + state : '');
+  el.textContent = state === 'saving' ? 'Saving…'
+                 : state === 'saved'  ? '✓ Saved to Cloud'
+                 : state === 'error'  ? '⚠ Save Failed — Retry'
+                 : 'Save to Cloud';
 }
 
 async function triggerFirebaseSave() {
@@ -87,8 +85,7 @@ document.getElementById('s-gameplay').addEventListener('click', () => {
 document.getElementById('btn-back-to-settings-gp').addEventListener('click', () => {
   showView('view-settings');
 });
-document.getElementById('list-save-btn').addEventListener('click', triggerFirebaseSave);
-document.getElementById('edit-save-btn').addEventListener('click', triggerFirebaseSave);
+document.getElementById('char-save-btn').addEventListener('click', triggerFirebaseSave);
 
 // ── Gameplay settings ─────────────────────────────────────────────────────────
 function loadGP() {
@@ -654,7 +651,10 @@ function initFirebase() {
     `https://www.gstatic.com/firebasejs/${VER}/firebase-app-compat.js`,
     `https://www.gstatic.com/firebasejs/${VER}/firebase-storage-compat.js`,
   ], () => {
-    _fbStorage = window.firebase.storage(window.firebase.initializeApp(FIREBASE_CONFIG));
+    const app  = window.firebase.apps.length
+                 ? window.firebase.app()
+                 : window.firebase.initializeApp(FIREBASE_CONFIG);
+    _fbStorage = window.firebase.storage(app);
     // Auto-load on startup
     setSaveBtn('saving');
     firebaseLoadAll()
