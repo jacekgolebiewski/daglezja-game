@@ -108,7 +108,8 @@ const GP_SLIDERS = [
   { sliderId: 'sl-speed-penalty', valId: 'val-speed-penalty', key: 'speedPenalty',     unit: 'px/s'   },
   { sliderId: 'sl-max-gap',       valId: 'val-max-gap',       key: 'maxGap',           unit: 'blocks' },
   { sliderId: 'sl-dlg-first',     valId: 'val-dlg-first',     key: 'dialogueFirst',    unit: 'blocks' },
-  { sliderId: 'sl-dlg-interval',  valId: 'val-dlg-interval',  key: 'dialogueInterval', unit: 'blocks' },
+  { sliderId: 'sl-dlg-interval',  valId: 'val-dlg-interval',  key: 'dialogueInterval', unit: 'blocks'     },
+  { sliderId: 'sl-level-length',  valId: 'val-level-length',  key: 'levelLength',      unit: 'platforms'  },
 ];
 
 function renderGameplayView() {

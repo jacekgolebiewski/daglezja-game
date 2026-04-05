@@ -25,6 +25,7 @@ let SPEED_PENALTY     = 30;   // speed lost on wrong NPC answer
 let GAME_MAX_GAP      = 2;    // max gap between platforms (blocks, 1–3)
 let DIALOGUE_FIRST    = 30;   // blocks until first encounter
 let DIALOGUE_INTERVAL = 120;  // blocks between subsequent encounters
+let LEVEL_LENGTH      = 50;   // platforms per run (0 = infinite)
 
 // ── Globals ───────────────────────────────────────────────────────────────────
 const C   = document.getElementById('c');
@@ -36,7 +37,7 @@ let player, cameraX, platforms;
 let speed, speedRampTimer, speedTimer, score, best;
 let holding, lastTime, jumpBuffer = 0;
 const JUMP_BUFFER_SEC = 0.14;
-let genX, genLastY, genLastRight, genKind, genKindLeft;
+let genX, genLastY, genLastRight, genKind, genKindLeft, genPlatformCount;
 let playerCharIdx;
 let avatarHoverIdx;
 let dlg;
@@ -119,8 +120,9 @@ function init() {
   genX         = groundWidth * B;
   genLastY     = groundY;
   genLastRight = genX;
-  genKind      = 0;  // start with grass (matches ground platform)
-  genKindLeft  = 6 + Math.floor(Math.random() * 5);
+  genKind          = 0;  // start with grass (matches ground platform)
+  genKindLeft      = 6 + Math.floor(Math.random() * 5);
+  genPlatformCount = 0;
 
   player = {
     wx: cameraX + PLAYER_SCR_X,
@@ -144,6 +146,7 @@ function genNext() {
   const newY = Math.max(minY, Math.min(maxY, genLastY + dyB * B));
   const startX = genLastRight + gapB * B;
 
+  genPlatformCount++;
   if (--genKindLeft <= 0) {
     // Pick a new kind different from the current one
     let next;
@@ -469,7 +472,7 @@ function update(dt) {
     return;
   }
 
-  while (genX < cameraX + W * 5) genNext();
+  while (genX < cameraX + W * 5 && genPlatformCount < LEVEL_LENGTH) genNext();
   platforms = platforms.filter(p => p.wx + p.wb * B > cameraX - B * 2);
 }
 
@@ -1729,6 +1732,7 @@ function loadGameplaySettings() {
     if (typeof s.maxGap           === 'number') GAME_MAX_GAP      = s.maxGap;
     if (typeof s.dialogueInterval === 'number') DIALOGUE_INTERVAL = s.dialogueInterval;
     if (typeof s.dialogueFirst    === 'number') DIALOGUE_FIRST    = s.dialogueFirst;
+    if (typeof s.levelLength      === 'number') LEVEL_LENGTH      = s.levelLength;
   } catch(e) { /* ignore corrupt data */ }
 }
 
