@@ -414,7 +414,7 @@ function update(dt) {
     if (player.vy >= 0 && prevBottom <= pTop + 2 && curBottom >= pTop) {
       player.y        = pTop - player.h;
       player.onGround = true;
-      if (jumpBuffer > 0) {
+      if (jumpBuffer > 0 || holding) {
         player.vy       = JUMP_VY;
         player.onGround = false;
         jumpBuffer      = 0;
