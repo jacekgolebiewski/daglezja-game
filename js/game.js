@@ -272,36 +272,49 @@ function startDialogueSpeechBubble() {
 function updateNpc(dt) {
   if (!npc) return;
 
-  // Follow the player's exact path: look up the Y the player had when at npc.wx
-  const hist = playerPathHistory;
-  if (hist.length > 0 && npc.wx <= hist[hist.length - 1].wx) {
+  const hist          = playerPathHistory;
+  const targetScreenX = PLAYER_SCR_X - B * 1.5;
+
+  // Look up the player's Y from path history at a given world-X position
+  function yAtWorldX(wx) {
+    if (hist.length === 0 || wx > hist[hist.length - 1].wx) return player.y;
     let lo = 0, hi = hist.length - 1;
     while (lo < hi - 1) {
       const mid = (lo + hi) >> 1;
-      if (hist[mid].wx <= npc.wx) lo = mid; else hi = mid;
+      if (hist[mid].wx <= wx) lo = mid; else hi = mid;
     }
     const a = hist[lo], b = hist[Math.min(lo + 1, hist.length - 1)];
     const denom = b.wx - a.wx;
-    const t = denom > 0 ? Math.max(0, Math.min(1, (npc.wx - a.wx) / denom)) : 0;
-    npc.y = a.y + (b.y - a.y) * t;
-  } else {
-    npc.y = player.y; // fallback before enough history is recorded
+    const t = denom > 0 ? Math.max(0, Math.min(1, (wx - a.wx) / denom)) : 0;
+    return a.y + (b.y - a.y) * t;
   }
-
-  const npcScreenX    = npc.wx - cameraX;
-  const targetScreenX = PLAYER_SCR_X - B * 1.5;
 
   if (npc.phase === 'approaching') {
     // Move faster than camera so NPC catches up from behind
     npc.wx += speed * 1.5 * dt;
+    npc.y   = yAtWorldX(npc.wx);
+    const npcScreenX = npc.wx - cameraX;
     if (npcScreenX >= targetScreenX) {
       npc.wx    = cameraX + targetScreenX; // snap into position
+      npc.y     = yAtWorldX(npc.wx);
       npc.phase = 'following';
       npc.timer = 0;
     }
   } else if (npc.phase === 'following') {
-    // Match camera speed — NPC stays at fixed screen offset behind player
-    npc.wx += speed * dt;
+    // Follow the player's world-space path with a fixed temporal delay so the NPC
+    // naturally lags further behind at high speed and stays closer at low speed,
+    // instead of being rigidly screen-locked regardless of speed changes.
+    // At the default speed (~320 px/s, 60 fps) FOLLOW_DELAY≈10 frames ≈ 1.5 blocks.
+    const FOLLOW_DELAY = 10;
+    if (hist.length > FOLLOW_DELAY) {
+      const entry = hist[hist.length - 1 - FOLLOW_DELAY];
+      npc.wx = entry.wx;
+      npc.y  = entry.y;
+    } else {
+      // Not enough history yet – screen-relative fallback
+      npc.wx += speed * dt;
+      npc.y   = yAtWorldX(npc.wx);
+    }
     npc.timer += dt;
     if (npc.timer >= 0.5) {
       startDialogueSpeechBubble();
@@ -309,9 +322,11 @@ function updateNpc(dt) {
   } else if (npc.phase === 'talking') {
     // Lock to fixed screen position while dialogue is active
     npc.wx = cameraX + targetScreenX;
+    npc.y  = yAtWorldX(npc.wx);
   } else if (npc.phase === 'reacting') {
     // Stay visible briefly so player sees face, then begin exit
     npc.wx = cameraX + targetScreenX;
+    npc.y  = yAtWorldX(npc.wx);
     npc.timer += dt;
     if (npc.timer >= 0.4) {
       npc.phase = 'leaving';
@@ -320,6 +335,7 @@ function updateNpc(dt) {
   } else if (npc.phase === 'leaving') {
     // Slow down — camera pulls away, NPC drifts off left naturally
     npc.wx += speed * 0.25 * dt;
+    npc.y   = yAtWorldX(npc.wx);
     if (npc.wx - cameraX < -B * 4) {
       npc = null;
     }
