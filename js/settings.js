@@ -11,7 +11,6 @@ const FIREBASE_CONFIG = {
 let charEditIdx  = -1;
 let cropCallback = null;
 let _fbStorage   = null;
-let _saveTimer   = null;
 
 // ── New character palette ─────────────────────────────────────────────────────
 const NEW_CHAR_PALETTE = [
@@ -32,34 +31,33 @@ function saveCharactersToStorage() {
     interactions: ch.interactions || [],
   }));
   localStorage.setItem(CHAR_STORAGE_KEY, JSON.stringify(data));
-  scheduleSave();
 }
 
-// ── Sync status pill ──────────────────────────────────────────────────────────
-function setSyncPill(state, text) {
-  ['list-sync-pill', 'edit-sync-pill'].forEach(id => {
+// ── Nav save button state ─────────────────────────────────────────────────────
+function setSaveBtn(state) {
+  ['list-save-btn', 'edit-save-btn'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.className  = 'sync-pill' + (state ? ' ' + state : '');
-    el.textContent = text;
+    el.disabled  = state === 'saving';
+    el.className = 'nav-save-btn' + (state && state !== 'saving' ? ' ' + state : '');
+    el.textContent = state === 'saving' ? 'Saving…'
+                   : state === 'saved'  ? '✓ Saved'
+                   : state === 'error'  ? '⚠ Failed'
+                   : 'Save';
   });
 }
 
-// ── Debounced Firebase push ───────────────────────────────────────────────────
-function scheduleSave() {
+async function triggerFirebaseSave() {
   if (!_fbStorage) return;
-  clearTimeout(_saveTimer);
-  setSyncPill('saving', 'Saving…');
-  _saveTimer = setTimeout(async () => {
-    try {
-      await firebaseSaveAll();
-      setSyncPill('saved', '✓ Saved');
-      setTimeout(() => setSyncPill('', ''), 3000);
-    } catch(e) {
-      setSyncPill('error', '⚠ Failed');
-      console.error('Firebase save failed:', e);
-    }
-  }, 2000);
+  setSaveBtn('saving');
+  try {
+    await firebaseSaveAll();
+    setSaveBtn('saved');
+    setTimeout(() => setSaveBtn('idle'), 3000);
+  } catch(e) {
+    setSaveBtn('error');
+    console.error('Firebase save failed:', e);
+  }
 }
 
 // ── View navigation ───────────────────────────────────────────────────────────
@@ -89,6 +87,8 @@ document.getElementById('s-gameplay').addEventListener('click', () => {
 document.getElementById('btn-back-to-settings-gp').addEventListener('click', () => {
   showView('view-settings');
 });
+document.getElementById('list-save-btn').addEventListener('click', triggerFirebaseSave);
+document.getElementById('edit-save-btn').addEventListener('click', triggerFirebaseSave);
 
 // ── Gameplay settings ─────────────────────────────────────────────────────────
 function loadGP() {
@@ -100,17 +100,6 @@ function loadGP() {
 
 function saveGP(gp) {
   localStorage.setItem(GAMEPLAY_STORAGE_KEY, JSON.stringify(gp));
-}
-
-function loadMusic() {
-  try {
-    const raw = localStorage.getItem(MUSIC_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : { enabled: false, url: '' };
-  } catch(e) { return { enabled: false, url: '' }; }
-}
-
-function saveMusic(m) {
-  localStorage.setItem(MUSIC_STORAGE_KEY, JSON.stringify(m));
 }
 
 const GP_SLIDERS = [
@@ -137,23 +126,6 @@ function renderGameplayView() {
       saveGP(gp2);
     };
   });
-
-  // Music settings
-  const music = loadMusic();
-  const musicEnabledEl = document.getElementById('music-enabled');
-  const musicUrlEl     = document.getElementById('music-url');
-  musicEnabledEl.checked = !!music.enabled;
-  musicUrlEl.value       = music.url || '';
-  musicEnabledEl.onchange = () => {
-    const m = loadMusic();
-    m.enabled = musicEnabledEl.checked;
-    saveMusic(m);
-  };
-  musicUrlEl.onchange = () => {
-    const m = loadMusic();
-    m.url = musicUrlEl.value.trim();
-    saveMusic(m);
-  };
 }
 
 document.getElementById('btn-gp-reset').addEventListener('click', () => {
@@ -684,18 +656,17 @@ function initFirebase() {
   ], () => {
     _fbStorage = window.firebase.storage(window.firebase.initializeApp(FIREBASE_CONFIG));
     // Auto-load on startup
-    setSyncPill('saving', 'Syncing…');
+    setSaveBtn('saving');
     firebaseLoadAll()
       .then(() => {
-        setSyncPill('saved', '✓ Ready');
-        setTimeout(() => setSyncPill('', ''), 3000);
+        setSaveBtn('idle');
         renderCharList();
       })
       .catch(err => {
         if (err?.code === 'storage/object-not-found') {
-          setSyncPill('', ''); // No cloud data yet — that's OK
+          setSaveBtn('idle'); // No cloud data yet — that's OK
         } else {
-          setSyncPill('error', '⚠ Sync failed');
+          setSaveBtn('error');
           console.error('Firebase load failed:', err);
         }
       });

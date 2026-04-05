@@ -31,17 +31,18 @@ body {
 }
 .s-spacer { min-width: 60px; }
 
-/* ── Sync pill ── */
-.sync-pill {
-  font-size: 11px; font-weight: 600;
-  padding: 3px 9px; border-radius: 20px;
-  white-space: nowrap; transition: opacity 0.3s;
-  min-width: 60px; text-align: right;
+/* ── Nav save button ── */
+.nav-save-btn {
+  background: none; border: none;
+  color: #007aff; font-size: 16px; font-weight: 600;
+  cursor: pointer; padding: 0; font-family: inherit;
+  white-space: nowrap; min-width: 44px; text-align: right;
+  transition: opacity 0.15s, color 0.2s;
 }
-.sync-pill:empty { visibility: hidden; }
-.sync-pill.saving { color: #856404; }
-.sync-pill.saved  { color: #1a5c1f; }
-.sync-pill.error  { color: #c0392b; }
+.nav-save-btn:active   { opacity: 0.6; }
+.nav-save-btn:disabled { color: #aaa; cursor: default; }
+.nav-save-btn.saved    { color: #34c759; }
+.nav-save-btn.error    { color: #ff3b30; }
 
 /* ── Body & sections ── */
 .s-body { padding: 24px 16px 60px; }
@@ -321,55 +322,6 @@ body {
   transition: border-color 0.15s, color 0.15s;
 }
 .gp-reset:hover { border-color: #1a5c1f; color: #1a5c1f; }
-
-/* ── Music toggle ── */
-.s-toggle {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-.s-toggle input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-  position: absolute;
-}
-.s-toggle-thumb {
-  display: block;
-  width: 51px; height: 31px;
-  background: #e5e5ea;
-  border-radius: 16px;
-  transition: background 0.2s;
-  position: relative;
-}
-.s-toggle-thumb::after {
-  content: '';
-  position: absolute;
-  top: 2px; left: 2px;
-  width: 27px; height: 27px;
-  background: #fff;
-  border-radius: 50%;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
-  transition: transform 0.2s;
-}
-.s-toggle input:checked + .s-toggle-thumb {
-  background: #34c759;
-}
-.s-toggle input:checked + .s-toggle-thumb::after {
-  transform: translateX(20px);
-}
-
-/* ── Music URL input ── */
-.music-url-input {
-  width: 100%; padding: 9px 11px;
-  border: 1.5px solid #d1d1d6; border-radius: 8px;
-  font-size: 13px; font-family: inherit; background: #f9f9f9;
-  color: #1c1c1e; margin-top: 2px;
-}
-.music-url-input:focus { outline: none; border-color: #007aff; background: #fff; }
-.music-url-input::placeholder { color: #c7c7cc; }
 
 /* ── Crop modal ── */
 #crop-modal {

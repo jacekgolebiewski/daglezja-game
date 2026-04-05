@@ -6,7 +6,6 @@ const VERSION_DATE = '2026-04-05';
 
 const CHAR_STORAGE_KEY     = 'blockrunner_chars_v1';
 const GAMEPLAY_STORAGE_KEY = 'blockrunner_gameplay_v1';
-const MUSIC_STORAGE_KEY    = 'blockrunner_music_v1';
 
 const GP_DEFAULTS = {
   speedStart:       320,
