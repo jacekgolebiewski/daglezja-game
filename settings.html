@@ -20,11 +20,11 @@
     <div class="s-card">
       <div class="s-row s-row-tappable" id="s-characters">
         <span class="s-key">Characters</span>
-        <span class="s-val">Manage ›</span>
+        <span class="s-val s-val-arrow">Manage ›</span>
       </div>
       <div class="s-row s-row-tappable" id="s-gameplay">
         <span class="s-key">Gameplay</span>
-        <span class="s-val">Adjust ›</span>
+        <span class="s-val s-val-arrow">Adjust ›</span>
       </div>
     </div>
     <p class="s-section-label">About</p>
@@ -46,9 +46,8 @@
   <div class="s-nav">
     <button class="s-back" id="btn-back-to-settings">&#8592; Settings</button>
     <span class="s-nav-title">Characters</span>
-    <span class="s-spacer"></span>
+    <span class="sync-pill" id="list-sync-pill"></span>
   </div>
-  <div id="char-drive-section"></div>
   <div id="char-list-items"></div>
 </div>
 
@@ -57,19 +56,30 @@
   <div class="s-nav">
     <button class="s-back" id="btn-back-to-chars">&#8592; Characters</button>
     <span class="s-nav-title" id="char-title">Character</span>
-    <span class="s-spacer"></span>
+    <span class="sync-pill" id="edit-sync-pill"></span>
   </div>
-  <div class="char-edit-wrap">
-    <p class="s-section-label">Name</p>
-    <input type="text" id="char-edit-name" class="char-edit-name" placeholder="Character name" maxlength="24" autocomplete="off" />
-    <p class="s-section-label">Mood Images <span style="font-weight:400;text-transform:none;font-size:12px;color:#8e8e93">· tap a mood to upload &amp; crop</span></p>
+
+  <!-- Hero: large avatar + inline name -->
+  <div class="char-hero">
+    <div class="char-hero-avatar" id="char-hero-avatar"></div>
+    <input type="text" id="char-edit-name" class="char-hero-name"
+           placeholder="Character name" maxlength="24" autocomplete="off" />
+  </div>
+
+  <div class="s-body">
+    <div class="section-header-row">
+      <p class="s-section-label">Mood Images</p>
+      <span class="section-hint">tap to upload &amp; crop</span>
+    </div>
     <div class="mood-grid" id="mood-grid"></div>
-    <p class="s-section-label" style="margin-top:4px">Interactions <span style="font-weight:400;text-transform:none;font-size:12px;color:#8e8e93">· questions asked in game</span></p>
+
+    <div class="section-header-row" style="margin-top:4px">
+      <p class="s-section-label">Interactions</p>
+      <button class="btn-add-inline" id="btn-add-interaction">+ Add</button>
+    </div>
     <div id="interactions-list" class="iact-list"></div>
-    <div id="interaction-form"></div>
-    <button type="button" class="btn-add-interaction" id="btn-add-interaction">+ Add Interaction</button>
-    <button class="btn-primary" id="char-save-btn">Save</button>
-    <button class="btn-delete-char" id="char-delete-btn" style="display:none">Delete Character</button>
+
+    <button class="btn-delete-char" id="char-delete-btn">Delete Character</button>
   </div>
 </div>
 
@@ -142,7 +152,7 @@
       </div>
     </div>
 
-    <div style="padding: 0 0 8px">
+    <div style="padding-bottom:8px">
       <button class="gp-reset" id="btn-gp-reset">Reset to defaults</button>
     </div>
 
