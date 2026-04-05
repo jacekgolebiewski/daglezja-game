@@ -36,7 +36,7 @@ let player, cameraX, platforms;
 let speed, speedRampTimer, speedTimer, score, best;
 let holding, lastTime, jumpBuffer = 0;
 const JUMP_BUFFER_SEC = 0.14;
-let genX, genLastY, genLastRight;
+let genX, genLastY, genLastRight, genKind, genKindLeft;
 let playerCharIdx;
 let avatarHoverIdx;
 let dlg;
@@ -53,13 +53,6 @@ let pauseBtn = null;
 let pauseOverlayBtns = null;
 let deadBtns = null;
 let avatarBackBtn = null;
-
-let musicEnabled = false;
-let musicVideoId = '';
-let ytPlayer     = null;
-let ytReady      = false;
-let musicPlaying = false;
-let musicBtn     = null;
 
 best           = 0;
 playerCharIdx  = -1;
@@ -126,6 +119,8 @@ function init() {
   genX         = groundWidth * B;
   genLastY     = groundY;
   genLastRight = genX;
+  genKind      = 0;  // start with grass (matches ground platform)
+  genKindLeft  = 6 + Math.floor(Math.random() * 5);
 
   player = {
     wx: cameraX + PLAYER_SCR_X,
@@ -149,8 +144,14 @@ function genNext() {
   const newY = Math.max(minY, Math.min(maxY, genLastY + dyB * B));
   const startX = genLastRight + gapB * B;
 
-  const kind = Math.floor(Math.random() * 5);
-  platforms.push({ wx: startX, y: newY, wb: widB, decor: pickDecor(widB, kind), blockType: kind });
+  if (--genKindLeft <= 0) {
+    // Pick a new kind different from the current one
+    let next;
+    do { next = Math.floor(Math.random() * 5); } while (next === genKind);
+    genKind     = next;
+    genKindLeft = 6 + Math.floor(Math.random() * 6); // 6-11 platforms per biome run
+  }
+  platforms.push({ wx: startX, y: newY, wb: widB, decor: pickDecor(widB, genKind), blockType: genKind });
   genLastRight = startX + widB * B;
   genLastY     = newY;
   genX         = genLastRight;
@@ -426,7 +427,7 @@ function update(dt) {
     if (player.vy >= 0 && prevBottom <= pTop + 2 && curBottom >= pTop) {
       player.y        = pTop - player.h;
       player.onGround = true;
-      if (jumpBuffer > 0 || holding) {
+      if (jumpBuffer > 0) {
         player.vy       = JUMP_VY;
         player.onGround = false;
         jumpBuffer      = 0;
@@ -460,7 +461,6 @@ function update(dt) {
 
   if (player.y > H + B * 3) {
     state = 'dead';
-    musicPause();
   }
 
   if (score >= nextDialogueTrigger) {
@@ -1133,23 +1133,6 @@ function drawHUD() {
   ctx.fillRect(b1x, bBarY, barW, barH);
   ctx.fillRect(b2x, bBarY, barW, barH);
   pauseBtn = { x: pbX, y: pbY, w: pbSz, h: pbSz };
-
-  // Music button — right of pause button (only when music is configured)
-  if (musicEnabled && musicVideoId) {
-    const mbSz = 30, mbX = pbX + pbSz + 6, mbY = 10;
-    ctx.fillStyle = musicPlaying ? 'rgba(255,255,255,0.88)' : 'rgba(220,220,220,0.70)';
-    roundRect(mbX, mbY, mbSz, mbSz, mbSz / 2);
-    ctx.fill();
-    ctx.fillStyle    = musicPlaying ? '#1a5c1f' : '#8e8e93';
-    ctx.font         = `700 15px ${SANS}`;
-    ctx.textAlign    = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('♪', mbX + mbSz / 2, mbY + mbSz / 2 + 1);
-    ctx.textBaseline = 'alphabetic';
-    musicBtn = { x: mbX, y: mbY, w: mbSz, h: mbSz };
-  } else {
-    musicBtn = null;
-  }
 }
 
 function drawPauseOverlay() {
@@ -1646,12 +1629,7 @@ function inBtn(btn, px, py) {
 function togglePause() {
   if (state !== 'playing' && state !== 'dialogue') return;
   paused = !paused;
-  if (!paused) {
-    pauseOverlayBtns = null;
-    musicPlay();
-  } else {
-    musicPause();
-  }
+  if (!paused) pauseOverlayBtns = null;
 }
 
 function goHome() {
@@ -1659,7 +1637,6 @@ function goHome() {
   pauseOverlayBtns = null;
   deadBtns = null;
   state = 'cover';
-  musicPause();
 }
 
 function press(px, py) {
@@ -1685,7 +1662,7 @@ function press(px, py) {
   if (state === 'avatar_select') {
     if (inBtn(avatarBackBtn, px, py)) { state = 'cover'; return; }
     const idx = getCardAtPoint(px, py);
-    if (idx >= 0) { playerCharIdx = idx; init(); state = 'playing'; lastTime = 0; musicPlay(); }
+    if (idx >= 0) { playerCharIdx = idx; init(); state = 'playing'; lastTime = 0; }
     return;
   }
 
@@ -1695,7 +1672,7 @@ function press(px, py) {
       if (inBtn(deadBtns.home, px, py)) { goHome(); return; }
     }
     // tap anywhere else = retry
-    init(); state = 'playing'; lastTime = 0; musicPlay();
+    init(); state = 'playing'; lastTime = 0;
     return;
   }
 
@@ -1709,7 +1686,6 @@ function press(px, py) {
   // ── Playing ──────────────────────────────────────────────────────────────────
   if (state === 'playing') {
     if (inBtn(pauseBtn, px, py)) { togglePause(); return; }
-    if (musicBtn && inBtn(musicBtn, px, py)) { toggleMusic(); return; }
     if (player.onGround) { player.vy = JUMP_VY; player.onGround = false; jumpBuffer = 0; }
     else                 { jumpBuffer = JUMP_BUFFER_SEC; }
   }
@@ -1741,73 +1717,6 @@ function loop(ts) {
   draw();
 }
 
-// ── YouTube Music ─────────────────────────────────────────────────────────────
-function extractYouTubeId(url) {
-  const patterns = [/[?&]v=([^&#]+)/, /youtu\.be\/([^?&#]+)/, /\/embed\/([^?&#]+)/];
-  for (const p of patterns) {
-    const m = url.match(p);
-    if (m) return m[1];
-  }
-  return null;
-}
-
-function loadMusicSettings() {
-  try {
-    const raw = localStorage.getItem(MUSIC_STORAGE_KEY);
-    if (!raw) return;
-    const s = JSON.parse(raw);
-    musicEnabled = !!s.enabled;
-    musicVideoId = extractYouTubeId(s.url || '') || '';
-  } catch(e) {}
-  if (musicEnabled && musicVideoId) initYouTubeMusic();
-}
-
-function initYouTubeMusic() {
-  if (document.getElementById('yt-music-host')) return;
-  const div = document.createElement('div');
-  div.id = 'yt-music-host';
-  div.style.cssText = 'position:fixed;bottom:0;left:0;width:1px;height:1px;opacity:0.01;pointer-events:none;overflow:hidden;';
-  document.body.appendChild(div);
-  const tag = document.createElement('script');
-  tag.src = 'https://www.youtube.com/iframe_api';
-  document.head.appendChild(tag);
-}
-
-window.onYouTubeIframeAPIReady = function() {
-  if (!musicEnabled || !musicVideoId) return;
-  ytPlayer = new YT.Player('yt-music-host', {
-    width: 1, height: 1,
-    videoId: musicVideoId,
-    playerVars: {
-      autoplay: 0, loop: 1, playlist: musicVideoId,
-      controls: 0, disablekb: 1, fs: 0, modestbranding: 1, rel: 0, iv_load_policy: 3,
-    },
-    events: {
-      onReady: () => {
-        ytReady = true;
-        if (state === 'playing' || state === 'dialogue') musicPlay();
-      },
-    },
-  });
-};
-
-function musicPlay() {
-  if (!musicEnabled || !ytReady || !ytPlayer) return;
-  ytPlayer.playVideo();
-  musicPlaying = true;
-}
-
-function musicPause() {
-  if (!ytReady || !ytPlayer) return;
-  ytPlayer.pauseVideo();
-  musicPlaying = false;
-}
-
-function toggleMusic() {
-  if (musicPlaying) musicPause();
-  else musicPlay();
-}
-
 // ── Gameplay settings loader ──────────────────────────────────────────────────
 function loadGameplaySettings() {
   try {
@@ -1826,7 +1735,6 @@ function loadGameplaySettings() {
 // ── Boot ──────────────────────────────────────────────────────────────────────
 loadCharactersFromStorage();
 loadGameplaySettings();
-loadMusicSettings();
 state    = 'cover';
 lastTime = 0;
 requestAnimationFrame(loop);
