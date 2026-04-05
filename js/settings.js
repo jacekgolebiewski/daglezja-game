@@ -35,14 +35,16 @@ function saveCharactersToStorage() {
 
 // ── Save button state ─────────────────────────────────────────────────────────
 function setSaveBtn(state) {
-  const el = document.getElementById('char-save-btn');
-  if (!el) return;
-  el.disabled    = state === 'saving';
-  el.className   = 'btn-save-cloud' + (state && state !== 'saving' ? ' ' + state : '');
-  el.textContent = state === 'saving' ? 'Saving…'
-                 : state === 'saved'  ? '✓ Saved to Cloud'
-                 : state === 'error'  ? '⚠ Save Failed — Retry'
-                 : 'Save to Cloud';
+  ['char-save-btn', 'gp-save-btn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.disabled    = state === 'saving';
+    el.className   = 'btn-save-cloud' + (state && state !== 'saving' ? ' ' + state : '');
+    el.textContent = state === 'saving' ? 'Saving…'
+                   : state === 'saved'  ? '✓ Saved to Cloud'
+                   : state === 'error'  ? '⚠ Save Failed — Retry'
+                   : 'Save to Cloud';
+  });
 }
 
 async function triggerFirebaseSave() {
@@ -86,6 +88,7 @@ document.getElementById('btn-back-to-settings-gp').addEventListener('click', () 
   showView('view-settings');
 });
 document.getElementById('char-save-btn').addEventListener('click', triggerFirebaseSave);
+document.getElementById('gp-save-btn').addEventListener('click', triggerFirebaseSave);
 
 // ── Gameplay settings ─────────────────────────────────────────────────────────
 function loadGP() {
@@ -698,6 +701,9 @@ async function firebaseSaveAll() {
   }
   const metaBlob = new Blob([JSON.stringify(meta)], { type: 'application/json' });
   await root.child('meta.json').put(metaBlob, { contentType: 'application/json' });
+
+  const gpBlob = new Blob([JSON.stringify(loadGP())], { type: 'application/json' });
+  await _fbStorage.ref('gameplay.json').put(gpBlob, { contentType: 'application/json' });
 }
 
 async function firebaseLoadAll() {
@@ -734,6 +740,12 @@ async function firebaseLoadAll() {
     }
   }
   saveCharactersToStorage();
+
+  try {
+    const gpUrl = await _fbStorage.ref('gameplay.json').getDownloadURL();
+    const gp    = await fetch(gpUrl).then(r => r.json());
+    saveGP(Object.assign({}, GP_DEFAULTS, gp));
+  } catch(e) { /* no gameplay data in cloud yet — keep local */ }
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
