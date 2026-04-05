@@ -1,11 +1,12 @@
 // ── Shared constants & data ───────────────────────────────────────────────────
 // Loaded by both index.html (game) and settings.html before their own scripts.
 
-const VERSION = 'v0.2.1';
+const VERSION = 'v0.3.0';
 const VERSION_DATE = '2026-04-05';
 
 const CHAR_STORAGE_KEY     = 'blockrunner_chars_v1';
 const GAMEPLAY_STORAGE_KEY = 'blockrunner_gameplay_v1';
+const MUSIC_STORAGE_KEY    = 'blockrunner_music_v1';
 
 const GP_DEFAULTS = {
   speedStart:       320,
