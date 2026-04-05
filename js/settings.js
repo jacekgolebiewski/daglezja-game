@@ -39,11 +39,11 @@ function setSaveBtn(state) {
     const el = document.getElementById(id);
     if (!el) return;
     el.disabled    = state === 'saving';
-    el.className   = 'btn-save-cloud' + (state && state !== 'saving' ? ' ' + state : '');
+    el.className   = 's-nav-action' + (state && state !== 'saving' && state !== 'idle' ? ' ' + state : '');
     el.textContent = state === 'saving' ? 'Saving…'
-                   : state === 'saved'  ? '✓ Saved to Cloud'
-                   : state === 'error'  ? '⚠ Save Failed — Retry'
-                   : 'Save to Cloud';
+                   : state === 'saved'  ? '✓ Saved'
+                   : state === 'error'  ? '⚠ Retry'
+                   : '☁ Save';
   });
 }
 
@@ -217,9 +217,11 @@ const MOOD_META = {
 };
 
 function renderHeroAvatar(ch) {
-  const hero = document.getElementById('char-hero-avatar');
+  const hero        = document.getElementById('char-hero-avatar');
+  const heroSection = document.querySelector('#view-char-edit .char-hero');
   hero.innerHTML = '';
   hero.style.background = ch.color + '33';
+  if (heroSection) heroSection.style.background = ch.color + '10';
   if (ch.imgs.default && ch.imgs.default.complete && ch.imgs.default.naturalWidth) {
     const img = document.createElement('img');
     img.src = ch.imgs.default.src;
@@ -455,10 +457,13 @@ function renderInteractionsList() {
 
 function buildIactCard(ch, iact, i) {
   const card = document.createElement('div');
-  card.className  = 'iact-card';
+  card.className   = 'iact-card';
   card.dataset.idx = i;
 
-  // ── Drag handle (2×3 dot grid)
+  // ── Header: drag handle + number + delete button
+  const header = document.createElement('div');
+  header.className = 'iact-header';
+
   const handle = document.createElement('div');
   handle.className = 'iact-drag-handle';
   handle.title     = 'Drag to reorder';
@@ -467,11 +472,31 @@ function buildIactCard(ch, iact, i) {
     '<div class="drag-dot-row"><span class="drag-dot"></span><span class="drag-dot"></span></div>' +
     '<div class="drag-dot-row"><span class="drag-dot"></span><span class="drag-dot"></span></div>';
 
-  // ── Editable fields
-  const fields = document.createElement('div');
-  fields.className = 'iact-fields';
+  const num = document.createElement('span');
+  num.className   = 'iact-num';
+  num.textContent = `#${i + 1}`;
 
-  function makeField(labelText, fieldKey, value, maxLen, extraLabelClass, extraTaClass) {
+  const delBtn = document.createElement('button');
+  delBtn.className = 'iact-del-btn';
+  delBtn.innerHTML = '&#x2715;';
+  delBtn.title     = 'Delete interaction';
+  delBtn.addEventListener('click', () => {
+    const idx = parseInt(card.dataset.idx);
+    if (!confirm('Delete this interaction?')) return;
+    ch.interactions.splice(idx, 1);
+    saveCharactersToStorage();
+    renderInteractionsList();
+  });
+
+  header.appendChild(handle);
+  header.appendChild(num);
+  header.appendChild(delBtn);
+
+  // ── Body: editable fields
+  const body = document.createElement('div');
+  body.className = 'iact-body';
+
+  function makeField(labelText, fieldKey, value, maxLen, extraLabelClass) {
     const wrap = document.createElement('div');
     wrap.className = 'iact-field';
 
@@ -480,10 +505,10 @@ function buildIactCard(ch, iact, i) {
     label.textContent = labelText;
 
     const ta = document.createElement('textarea');
-    ta.className  = 'iact-textarea' + (extraTaClass ? ' ' + extraTaClass : '');
-    ta.value      = value;
-    ta.maxLength  = maxLen;
-    ta.rows       = 1;
+    ta.className   = 'iact-textarea';
+    ta.value       = value;
+    ta.maxLength   = maxLen;
+    ta.rows        = 1;
     ta.placeholder = labelText;
 
     ta.addEventListener('input', () => {
@@ -509,34 +534,19 @@ function buildIactCard(ch, iact, i) {
   }
 
   const { wrap: wText, ta: taText } = makeField('Question',  'text',    iact.text,    120);
-  const { wrap: wOk,   ta: taOk   } = makeField('✓ Correct', 'correct', iact.correct,  80, 'correct-label', 'correct-textarea');
-  const { wrap: wBad,  ta: taBad  } = makeField('✗ Wrong',   'wrong',   iact.wrong,    80, 'wrong-label',   'wrong-textarea');
+  const { wrap: wOk,   ta: taOk   } = makeField('✓ Correct', 'correct', iact.correct,  80, 'correct-label');
+  const { wrap: wBad,  ta: taBad  } = makeField('✗ Wrong',   'wrong',   iact.wrong,    80, 'wrong-label');
 
-  fields.appendChild(wText);
-  fields.appendChild(wOk);
-  fields.appendChild(wBad);
+  body.appendChild(wText);
+  body.appendChild(wOk);
+  body.appendChild(wBad);
 
-  // Auto-resize after paint
   requestAnimationFrame(() => [taText, taOk, taBad].forEach(autoResize));
 
-  // ── Delete button
-  const delBtn = document.createElement('button');
-  delBtn.className   = 'iact-del-btn';
-  delBtn.textContent = '␡';
-  delBtn.title       = 'Delete interaction';
-  delBtn.addEventListener('click', () => {
-    const idx = parseInt(card.dataset.idx);
-    if (!confirm('Delete this interaction?')) return;
-    ch.interactions.splice(idx, 1);
-    saveCharactersToStorage();
-    renderInteractionsList();
-  });
+  card.appendChild(header);
+  card.appendChild(body);
 
-  card.appendChild(handle);
-  card.appendChild(fields);
-  card.appendChild(delBtn);
-
-  // ── Desktop drag — only drag when initiated from handle
+  // ── Desktop drag — only from handle
   handle.addEventListener('mousedown', () => {
     card.setAttribute('draggable', 'true');
     const reset = () => {
@@ -577,7 +587,7 @@ function buildIactCard(ch, iact, i) {
     renderInteractionsList();
   });
 
-  // ── Touch drag — initiated from handle
+  // ── Touch drag — from handle
   handle.addEventListener('touchstart', e => {
     e.preventDefault();
     touchDragCard = card;
@@ -660,7 +670,6 @@ function initFirebase() {
                  ? window.firebase.app()
                  : window.firebase.initializeApp(FIREBASE_CONFIG);
     _fbStorage = window.firebase.storage(app);
-    // Auto-load on startup
     setSaveBtn('saving');
     firebaseLoadAll()
       .then(() => {
@@ -668,12 +677,8 @@ function initFirebase() {
         renderCharList();
       })
       .catch(err => {
-        if (err?.code === 'storage/object-not-found') {
-          setSaveBtn('idle'); // No cloud data yet — that's OK
-        } else {
-          setSaveBtn('error');
-          console.error('Firebase load failed:', err);
-        }
+        setSaveBtn('error');
+        console.error('Firebase load failed:', err);
       });
   });
 }
@@ -709,45 +714,73 @@ async function firebaseSaveAll() {
 }
 
 async function firebaseLoadAll() {
-  const metaUrl = await _fbStorage.ref('characters/meta.json').getDownloadURL();
-  const meta    = await fetch(metaUrl).then(r => r.json());
+  // Fetch metadata — if not found, no cloud data yet (return cleanly)
+  let meta;
+  try {
+    const metaUrl = await _fbStorage.ref('characters/meta.json').getDownloadURL();
+    meta = await fetch(metaUrl).then(r => r.json());
+  } catch(e) {
+    if (e?.code === 'storage/object-not-found') return;
+    throw e;
+  }
+
+  const cloudIndices = Object.keys(meta).map(Number);
+  if (!cloudIndices.length) return;
+  const cloudCount = Math.max(...cloudIndices) + 1;
+
+  // Reset CHARACTERS to exactly match cloud state
+  while (CHARACTERS.length > cloudCount) CHARACTERS.pop();
+  while (CHARACTERS.length < cloudCount) {
+    const tpl = NEW_CHAR_PALETTE[CHARACTERS.length % NEW_CHAR_PALETTE.length];
+    CHARACTERS.push({ name: 'New Character', color: tpl.color,
+                      moods: { ...tpl.moods }, imgs: {}, _imgData: {}, interactions: [] });
+  }
 
   for (const [idx, charMeta] of Object.entries(meta)) {
     const i = parseInt(idx);
-    // Extend CHARACTERS array if cloud has more than local
-    while (CHARACTERS.length <= i) {
-      const tpl = NEW_CHAR_PALETTE[CHARACTERS.length % NEW_CHAR_PALETTE.length];
-      CHARACTERS.push({ name: 'New Character', color: tpl.color,
-                        moods: { ...tpl.moods }, imgs: {}, _imgData: {}, interactions: [] });
-    }
-    if (charMeta.name)         CHARACTERS[i].name         = charMeta.name;
-    if (charMeta.color)        CHARACTERS[i].color        = charMeta.color;
-    if (charMeta.moods)        CHARACTERS[i].moods        = charMeta.moods;
-    if (charMeta.interactions) CHARACTERS[i].interactions = charMeta.interactions;
+    if (i >= CHARACTERS.length) continue;
+    CHARACTERS[i].name         = charMeta.name         || CHARACTERS[i].name;
+    CHARACTERS[i].color        = charMeta.color        || CHARACTERS[i].color;
+    CHARACTERS[i].moods        = charMeta.moods        || CHARACTERS[i].moods;
+    CHARACTERS[i].interactions = charMeta.interactions || [];
+    // Clear any stale local images before loading from cloud
+    CHARACTERS[i]._imgData = {};
+    CHARACTERS[i].imgs     = {};
 
     for (const [mood, path] of Object.entries(charMeta.paths || {})) {
-      const url  = await _fbStorage.ref(`characters/${path}`).getDownloadURL();
-      const blob = await fetch(url).then(r => r.blob());
-      await new Promise(res => {
-        const fr = new FileReader();
-        fr.onload = ev => {
-          const dataUrl = ev.target.result;
-          CHARACTERS[i]._imgData[mood] = dataUrl;
-          const img = new Image();
-          img.onload = () => { CHARACTERS[i].imgs[mood] = img; res(); };
-          img.src = dataUrl;
-        };
-        fr.readAsDataURL(blob);
-      });
+      try {
+        const url  = await _fbStorage.ref(`characters/${path}`).getDownloadURL();
+        const blob = await fetch(url).then(r => r.blob());
+        await new Promise(res => {
+          const fr = new FileReader();
+          fr.onload = ev => {
+            const dataUrl = ev.target.result;
+            CHARACTERS[i]._imgData[mood] = dataUrl;
+            const img = new Image();
+            img.onload  = () => { CHARACTERS[i].imgs[mood] = img; res(); };
+            img.onerror = () => res();
+            img.src = dataUrl;
+          };
+          fr.onerror = () => res();
+          fr.readAsDataURL(blob);
+        });
+      } catch(e) {
+        console.warn(`Could not load image ${path}:`, e);
+      }
     }
   }
+
   saveCharactersToStorage();
 
   try {
     const gpUrl = await _fbStorage.ref('gameplay.json').getDownloadURL();
     const gp    = await fetch(gpUrl).then(r => r.json());
     saveGP(Object.assign({}, GP_DEFAULTS, gp));
-  } catch(e) { /* no gameplay data in cloud yet — keep local */ }
+  } catch(e) {
+    if (e?.code !== 'storage/object-not-found') {
+      console.warn('Could not load gameplay settings:', e);
+    }
+  }
 }
 
 // ── Changelog panel ───────────────────────────────────────────────────────────

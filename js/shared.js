@@ -1,7 +1,7 @@
 // ── Shared constants & data ───────────────────────────────────────────────────
 // Loaded by both index.html (game) and settings.html before their own scripts.
 
-const VERSION = 'v0.4.3';
+const VERSION = 'v0.5.0';
 const VERSION_DATE = '2026-04-05';
 
 const CHAR_STORAGE_KEY     = 'blockrunner_chars_v1';

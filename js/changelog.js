@@ -3,10 +3,16 @@
 
 const CHANGELOG = [
   {
-    "version": "v0.4.3",
+    "version": "v0.5.0",
     "date": "2026-04-05",
     "changes": [
-      "Fix NPC shadowing: follow player's world-space path with temporal delay instead of rigid screen-lock, so the NPC naturally lags further behind at high speed and stays closer at low speed"
+      "Material-inspired settings redesign: frosted nav bar, elevated cards, iOS gray palette",
+      "Save button moved to nav bar (☁ Save) — always visible without scrolling",
+      "Interaction cards redesigned with numbered header, cleaner borderless fields",
+      "Character hero section tinted with the character's own colour",
+      "Fix Firebase load: CHARACTERS array now fully replaced by cloud state (no stale local chars)",
+      "Fix Firebase load: per-image errors are caught individually so one bad image can't abort the whole load",
+      "Fix Firebase load: FileReader error callbacks handled so load never hangs"
     ]
   },
   {
