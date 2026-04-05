@@ -149,26 +149,31 @@ function genNext() {
   const newY = Math.max(minY, Math.min(maxY, genLastY + dyB * B));
   const startX = genLastRight + gapB * B;
 
-  platforms.push({ wx: startX, y: newY, wb: widB, decor: pickDecor(widB), blockType: Math.floor(Math.random() * 3) });
+  const kind = Math.floor(Math.random() * 5);
+  platforms.push({ wx: startX, y: newY, wb: widB, decor: pickDecor(widB, kind), blockType: kind });
   genLastRight = startX + widB * B;
   genLastY     = newY;
   genX         = genLastRight;
 }
 
 // ── Platform decoration picker ────────────────────────────────────────────────
-const DECOR_NATURE = [
-  '🌱','🌿','🌸','🌻','🌷','🌾','🍀','🌵','🪴','🌲','🌳','🎋',
-  '🌼','🌺','🍃','🪻','🫧','🌑','🍄','🌰','🪨','🪵',
+const DECOR_BY_KIND = [
+  // 0 grass
+  ['🌱','🌿','🌸','🌻','🌷','🌾','🍀','🪴','🌲','🌳','🌼','🌺','🍃','🪻','🍄','🌰','🪨','🪵'],
+  // 1 stone
+  ['🪨','💎','🗿','⛏️','🪙','⚔️','🛡️','🔩','⚙️','🏛️','🪬','🧱'],
+  // 2 wood
+  ['🪵','🌲','🌳','🍄','🪚','🔨','🪝','🌾','🎍','🪜','🪤'],
+  // 3 ice
+  ['❄️','⛄','🧊','🌨️','🏔️','💎','🌟','🔷','🫧'],
+  // 4 sand
+  ['🌵','🌴','🐚','🏺','🦎','🌅','🌞','🪸','🫙'],
 ];
-const DECOR_MALL = [
-  '🛒','🪣','🪚','🔨','🌡️','🪤','🧴','🧹','🪜','💧','🏷️','🎍',
-];
-function pickDecorEmoji() {
-  return Math.random() < 0.85
-    ? DECOR_NATURE[Math.floor(Math.random() * DECOR_NATURE.length)]
-    : DECOR_MALL[Math.floor(Math.random() * DECOR_MALL.length)];
+function pickDecorEmoji(kind) {
+  const pool = DECOR_BY_KIND[kind] || DECOR_BY_KIND[0];
+  return pool[Math.floor(Math.random() * pool.length)];
 }
-function pickDecor(wb) {
+function pickDecor(wb, kind) {
   if (Math.random() < 0.08) return [];
   const count = Math.min(wb, 1 + Math.floor(Math.random() * 4 * (0.4 + Math.random() * 0.6)));
   const items = [];
@@ -178,7 +183,7 @@ function pickDecor(wb) {
     let slot, tries = 0;
     do { slot = Math.floor(Math.random() * wb); tries++; } while (used.has(slot) && tries < 10);
     used.add(slot);
-    items.push({ emoji: pickDecorEmoji(), slot, scale: 0.72 + Math.random() * 0.38 });
+    items.push({ emoji: pickDecorEmoji(kind), slot, scale: 0.72 + Math.random() * 0.38 });
   }
   return items;
 }
@@ -730,55 +735,222 @@ function drawGlasshouse() {
   ctx.strokeRect(sx, baseY - ghH, ghW, ghH);
 }
 
-// ── Floor block renderer ──────────────────────────────────────────────────────
-function drawFloorBlock(bx, by, type) {
-  const GRASS_H = 7;
-  if (type === 0) {
-    ctx.fillStyle = '#8B5E2F';
-    ctx.fillRect(bx + 1, by + GRASS_H, B - 2, B - GRASS_H - 1);
-    ctx.strokeStyle = 'rgba(0,0,0,0.10)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(bx + 6,    by + GRASS_H + 7);  ctx.lineTo(bx + B - 6, by + GRASS_H + 7);
-    ctx.moveTo(bx + 4,    by + GRASS_H + 15); ctx.lineTo(bx + B - 4, by + GRASS_H + 15);
-    ctx.stroke();
-    ctx.fillStyle = '#52a843';
-    ctx.fillRect(bx + 1, by, B - 2, GRASS_H + 2);
-    ctx.fillStyle = 'rgba(255,255,255,0.30)';
-    ctx.fillRect(bx + 3, by + 1, B - 6, 3);
-    ctx.fillStyle = 'rgba(0,0,0,0.12)';
-    ctx.fillRect(bx + 1, by + B - 4, B - 2, 3);
-  } else if (type === 1) {
-    ctx.fillStyle = '#8a8a8a';
-    ctx.fillRect(bx + 1, by + 1, B - 2, B - 2);
-    ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    ctx.fillRect(bx + 1, by + 1, B - 2, 5);
-    ctx.fillRect(bx + 1, by + 1, 5, B - 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.20)';
-    ctx.fillRect(bx + 1, by + B - 5, B - 2, 4);
-    ctx.fillRect(bx + B - 5, by + 1, 4, B - 2);
-    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(bx + B * 0.3, by + 4); ctx.lineTo(bx + B * 0.45, by + B * 0.55);
-    ctx.moveTo(bx + B * 0.6, by + B * 0.35); ctx.lineTo(bx + B * 0.75, by + B - 5);
-    ctx.stroke();
-  } else {
-    ctx.fillStyle = '#a0622a';
-    ctx.fillRect(bx + 1, by + 1, B - 2, B - 2);
-    ctx.strokeStyle = 'rgba(0,0,0,0.13)';
-    ctx.lineWidth = 1;
-    for (let gy = by + 7; gy < by + B - 4; gy += 6) {
-      ctx.beginPath(); ctx.moveTo(bx + 2, gy); ctx.lineTo(bx + B - 2, gy); ctx.stroke();
-    }
-    ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    ctx.fillRect(bx + 1, by + 1, B - 2, 4);
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    ctx.fillRect(bx + 1, by + B - 4, B - 2, 3);
+// ── Platform kind renderer (seamless across whole platform width) ─────────────
+// kind: 0=grass, 1=stone, 2=wood, 3=ice, 4=sand
+function drawPlatformKind(sx, py, wb, kind) {
+  const pw = wb * B;
+
+  // Deterministic per-block variety helper (stable across frames)
+  function blockHash(bi) {
+    const v = Math.sin(bi * 127.1 + py * 311.7) * 43758.5453;
+    return v - Math.floor(v);
   }
-  ctx.strokeStyle = 'rgba(0,0,0,0.22)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(bx + 0.5, by + 0.5, B - 1, B - 1);
+
+  if (kind === 0) {
+    // ── GRASS / DIRT ──────────────────────────────────────────────────────────
+    const GRASS_H = 8;
+    // Dirt body
+    ctx.fillStyle = '#8B5E2F';
+    ctx.fillRect(sx, py + GRASS_H, pw, B - GRASS_H);
+    // Per-block dirt variety: darker/lighter patches
+    for (let i = 0; i < wb; i++) {
+      const r = blockHash(i);
+      if (r < 0.25) {
+        ctx.fillStyle = 'rgba(0,0,0,0.06)';
+        ctx.fillRect(sx + i * B + 2, py + GRASS_H + 3, B - 4, B - GRASS_H - 5);
+      } else if (r < 0.40) {
+        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+        ctx.fillRect(sx + i * B + 2, py + GRASS_H + 2, B - 4, B - GRASS_H - 4);
+      }
+    }
+    // Horizontal strata lines across full width
+    ctx.strokeStyle = 'rgba(0,0,0,0.07)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let gy = py + GRASS_H + 9; gy < py + B - 3; gy += 9) {
+      ctx.moveTo(sx + 2, gy); ctx.lineTo(sx + pw - 2, gy);
+    }
+    ctx.stroke();
+    // Grass strip — continuous across full width
+    ctx.fillStyle = '#52a843';
+    ctx.fillRect(sx, py, pw, GRASS_H + 2);
+    // Per-block grass shade variety
+    for (let i = 0; i < wb; i++) {
+      const r = blockHash(i + 50);
+      if (r < 0.20) {
+        ctx.fillStyle = 'rgba(0,0,0,0.08)'; // darker patch
+        ctx.fillRect(sx + i * B, py, B, GRASS_H + 2);
+      } else if (r < 0.35) {
+        ctx.fillStyle = 'rgba(255,255,255,0.08)'; // brighter patch
+        ctx.fillRect(sx + i * B, py, B, GRASS_H + 2);
+      }
+    }
+    // Highlight along grass top
+    ctx.fillStyle = 'rgba(255,255,255,0.30)';
+    ctx.fillRect(sx, py + 1, pw, 3);
+    // Bottom shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillRect(sx, py + B - 3, pw, 3);
+
+  } else if (kind === 1) {
+    // ── STONE BRICKS ─────────────────────────────────────────────────────────
+    const BRICK_H = 18; // half of B=36
+    const MORTAR  = 2;
+    // Base stone fill
+    ctx.fillStyle = '#888';
+    ctx.fillRect(sx, py, pw, B);
+    // Per-block stone colour variety
+    for (let i = 0; i < wb; i++) {
+      const r = blockHash(i);
+      // Top-half brick colour
+      if (r < 0.3) {
+        ctx.fillStyle = 'rgba(0,0,0,0.07)';
+        ctx.fillRect(sx + i * B, py, B, BRICK_H);
+      } else if (r < 0.5) {
+        ctx.fillStyle = 'rgba(255,255,255,0.06)';
+        ctx.fillRect(sx + i * B, py, B, BRICK_H);
+      }
+      // Bottom-half brick colour
+      const r2 = blockHash(i + 100);
+      if (r2 < 0.3) {
+        ctx.fillStyle = 'rgba(0,0,0,0.07)';
+        ctx.fillRect(sx + i * B, py + BRICK_H + MORTAR, B, B - BRICK_H - MORTAR);
+      } else if (r2 < 0.5) {
+        ctx.fillStyle = 'rgba(255,255,255,0.06)';
+        ctx.fillRect(sx + i * B, py + BRICK_H + MORTAR, B, B - BRICK_H - MORTAR);
+      }
+    }
+    // Horizontal mortar line
+    ctx.fillStyle = '#5a5a5a';
+    ctx.fillRect(sx, py + BRICK_H, pw, MORTAR);
+    // Vertical mortars — top row: every B, bottom row offset by B/2
+    ctx.fillStyle = '#5a5a5a';
+    for (let vx = sx + B; vx < sx + pw; vx += B) {
+      ctx.fillRect(vx - 1, py, MORTAR, BRICK_H);
+    }
+    for (let vx = sx + B / 2; vx < sx + pw; vx += B) {
+      ctx.fillRect(vx - 1, py + BRICK_H + MORTAR, MORTAR, B - BRICK_H - MORTAR);
+    }
+    // Top highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.20)';
+    ctx.fillRect(sx, py, pw, 3);
+    // Bottom shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.20)';
+    ctx.fillRect(sx, py + B - 3, pw, 3);
+
+  } else if (kind === 2) {
+    // ── WOOD PLANKS ──────────────────────────────────────────────────────────
+    ctx.fillStyle = '#a0622a';
+    ctx.fillRect(sx, py, pw, B);
+    // Per-plank (per-block) wood tone variety
+    for (let i = 0; i < wb; i++) {
+      const r = blockHash(i);
+      if (r < 0.30) {
+        ctx.fillStyle = 'rgba(0,0,0,0.08)';
+        ctx.fillRect(sx + i * B, py, B, B);
+      } else if (r < 0.55) {
+        ctx.fillStyle = 'rgba(255,180,80,0.07)';
+        ctx.fillRect(sx + i * B, py, B, B);
+      }
+    }
+    // Horizontal grain lines across full width
+    ctx.strokeStyle = 'rgba(0,0,0,0.11)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let gy = py + 7; gy < py + B - 2; gy += 7) {
+      ctx.moveTo(sx, gy); ctx.lineTo(sx + pw, gy);
+    }
+    ctx.stroke();
+    // Vertical plank dividers between blocks
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let vx = sx + B; vx < sx + pw; vx += B) {
+      ctx.moveTo(vx, py + 2); ctx.lineTo(vx, py + B - 2);
+    }
+    ctx.stroke();
+    // Top highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.20)';
+    ctx.fillRect(sx, py, pw, 4);
+    // Bottom shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(sx, py + B - 3, pw, 3);
+
+  } else if (kind === 3) {
+    // ── ICE / SNOW ───────────────────────────────────────────────────────────
+    const SNOW_H = 9;
+    // Ice body
+    ctx.fillStyle = '#8fcfe0';
+    ctx.fillRect(sx, py + SNOW_H, pw, B - SNOW_H);
+    // Per-block ice facet variety
+    for (let i = 0; i < wb; i++) {
+      const r = blockHash(i);
+      if (r < 0.35) {
+        ctx.fillStyle = 'rgba(255,255,255,0.10)';
+        ctx.fillRect(sx + i * B + 2, py + SNOW_H + 2, B - 4, B - SNOW_H - 4);
+      } else if (r < 0.55) {
+        ctx.fillStyle = 'rgba(0,80,140,0.08)';
+        ctx.fillRect(sx + i * B + 2, py + SNOW_H + 2, B - 4, B - SNOW_H - 4);
+      }
+    }
+    // Diagonal shimmer lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let ix = sx - B; ix < sx + pw + B; ix += 14) {
+      ctx.moveTo(ix, py + SNOW_H); ctx.lineTo(ix + 12, py + B - 4);
+    }
+    ctx.stroke();
+    // Snow/frost top — continuous strip
+    ctx.fillStyle = '#ddf2fa';
+    ctx.fillRect(sx, py, pw, SNOW_H + 2);
+    // Snow highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.50)';
+    ctx.fillRect(sx, py + 1, pw, 3);
+    // Ice blue shadow bottom
+    ctx.fillStyle = 'rgba(0,80,120,0.22)';
+    ctx.fillRect(sx, py + B - 3, pw, 3);
+
+  } else {
+    // ── SAND / EARTH (kind === 4) ─────────────────────────────────────────────
+    const CAP_H = 7;
+    // Sandy body
+    ctx.fillStyle = '#c8954a';
+    ctx.fillRect(sx, py + CAP_H, pw, B - CAP_H);
+    // Per-block sand shade variation
+    for (let i = 0; i < wb; i++) {
+      const r = blockHash(i);
+      if (r < 0.30) {
+        ctx.fillStyle = 'rgba(0,0,0,0.06)';
+        ctx.fillRect(sx + i * B + 2, py + CAP_H + 2, B - 4, B - CAP_H - 4);
+      } else if (r < 0.55) {
+        ctx.fillStyle = 'rgba(255,220,100,0.08)';
+        ctx.fillRect(sx + i * B + 2, py + CAP_H + 2, B - 4, B - CAP_H - 4);
+      }
+    }
+    // Horizontal ripple lines
+    ctx.strokeStyle = 'rgba(0,0,0,0.07)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let gy = py + CAP_H + 7; gy < py + B - 2; gy += 7) {
+      ctx.moveTo(sx + 3, gy); ctx.lineTo(sx + pw - 3, gy);
+    }
+    ctx.stroke();
+    // Compact sand top cap
+    ctx.fillStyle = '#b8843a';
+    ctx.fillRect(sx, py, pw, CAP_H + 2);
+    // Warm highlight
+    ctx.fillStyle = 'rgba(255,240,160,0.32)';
+    ctx.fillRect(sx, py + 1, pw, 3);
+    // Bottom shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.fillRect(sx, py + B - 3, pw, 3);
+  }
+
+  // Outer border (all kinds)
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(sx + 0.75, py + 0.75, pw - 1.5, B - 1.5);
 }
 
 function drawPlatforms() {
@@ -809,12 +981,8 @@ function drawPlatforms() {
         ctx.strokeRect(bx + 0.5, p.y + 0.5, B - 1, B - 1);
       }
     } else {
-      const bt = p.blockType !== undefined ? p.blockType : 0;
-      for (let i = 0; i < p.wb; i++) {
-        const bx = sx + i * B;
-        if (bx + B < -B || bx > W + B) continue;
-        drawFloorBlock(bx, p.y, bt);
-      }
+      const kind = p.blockType !== undefined ? p.blockType : 0;
+      drawPlatformKind(sx, p.y, p.wb, kind);
     }
 
     if (!isChoice && p.decor && p.decor.length > 0) {
