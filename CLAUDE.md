@@ -5,8 +5,12 @@
 1. Update the version and date in `js/shared.js`:
    - Bump `VERSION` following semver (patch for fixes, minor for features, major for reworks)
    - Set `VERSION_DATE` to today's date (`YYYY-MM-DD`)
-2. Commit and push your changes to the current branch.
-3. Deploy by merging to `gh-pages`:
+2. Add an entry for the new version at the top of `CHANGELOG.md`, then regenerate the JS data file:
+   ```bash
+   ./update-changelog.sh
+   ```
+3. Commit and push your changes to the current branch.
+4. Deploy by merging to `gh-pages`:
 
 ```bash
 git checkout gh-pages
